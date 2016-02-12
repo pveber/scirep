@@ -1,5 +1,8 @@
+FLG -rectypes
 PKG core
+PKG ezxmlm
+PKG higlo
 PKG omd
 PKG ppx_blob
-PKG vg
-PKG ezxmlm
+PKG xtmpl
+PKG vg.svg

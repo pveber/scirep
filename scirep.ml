@@ -2,6 +2,8 @@ open Core_kernel.Std
 
 let template = [%blob "template.html"]
 
+let style_css = [%blob "style.css"]
+
 (* Toplevel initialisation *)
 let a = Topdirs.dir_quit
 let () = Toploop.initialize_toplevel_env ()
@@ -86,6 +88,10 @@ let render_out_phrase fmt ophr =
 
 exception Error of exn * string
 
+let syntax_highlighting code =
+  Higlo.to_xml ~lang:"ocaml" code
+  |> Xtmpl_xml.to_string
+
 let expand_code_block contents =
   let open Omd_representation in
   let lexbuf = Lexing.from_string contents in
@@ -100,7 +106,7 @@ let expand_code_block contents =
         String.sub contents start bytes_read
         |> String.lstrip
       in
-      Format.fprintf buf_formatter "# %s\n" parsed_text ;
+      Format.fprintf buf_formatter "# %s" (syntax_highlighting parsed_text) ;
       let success = Toploop.execute_phrase true buf_formatter phrase in
       if success then (
         let new_stuff = List.hd_exn !out_phrases in
@@ -113,6 +119,8 @@ let expand_code_block contents =
     | End_of_file -> ()
     | Typetexp.Error (loc, env, err) ->
       Typetexp.report_error env buf_formatter err
+    | Typecore.Error (loc, env, err) ->
+      Typecore.report_error env buf_formatter err
   in
   loop 0 ;
   Html ("pre", [], [ Raw (Buffer.contents buf) ])
@@ -143,7 +151,8 @@ let main input_fn output_fn =
   in
   let variables = [
     "template_head_title", "Title" ;
-    "template_body", html
+    "template_body", html ;
+    "template_css", style_css ;
   ]
   in
   let buf = Buffer.create 253 in
