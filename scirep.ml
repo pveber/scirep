@@ -67,8 +67,6 @@ let render_out_phrase fmt ophr =
     Format.pp_print_newline fmt () ;
     Format.pp_print_string fmt s
 
-exception Error of exn * string
-
 let higlo_classes =
   let keyword = function
     0 -> "hl kwa"
