@@ -108,6 +108,18 @@ with the next element in the list. It is then *as expressive* as a
 loop, but *a lot safer*, since we don't need to take care of the loop
 nor handle the accumulator variable correctly.
 
+Note that there are two "natural" ways to iterate over a list (from
+left to right, or from right to left), and that is why the standard
+library offers two functions, `List.fold_left` and
+`List.fold_right`. As an exercice, try to figure out which one it is
+that we wrote (beware, there's a trap).
+
+Since a `fold` function is a way to iterate over a collection, we
+could write some for other collections like trees, graphs, sets, hash
+tables and so on. But that's yet another story.
+
+P.S. A call to `fold` is hidden in this messy code. Will you find it?
+
 ```ocaml
 let cut_outline path img =
   let area = `O { P.o with P.width = 0.001 } in
