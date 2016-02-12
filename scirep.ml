@@ -51,25 +51,6 @@ let string_is_xml s =
   try ignore (Ezxmlm.from_string s) ; true
   with _ -> false
 
-(* let is_picture = *)
-(*   let open Outcometree in *)
-(*   function *)
-(*   | Otyp_constr (Oide_dot (Oide_ident "Vg", "image"), []) -> *)
-(*     true *)
-(*   | _ -> false *)
-
-
-(* let pictures_of_outcome fmt = *)
-(*   let open Outcometree in *)
-(*   let render ot = *)
-(*     !Oprint.out_type Format.std_formatter ot ; *)
-(*     if is_picture ot *)
-(*     then Format.pp_print_string fmt (render_picture ()) *)
-(*   in *)
-(*   function *)
-(*   | Ophr_eval (_, ot) -> render ot *)
-(*   | _ -> () *)
-
 let render_out_phrase fmt ophr =
   let open Outcometree in
   let display =
