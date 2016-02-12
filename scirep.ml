@@ -88,8 +88,32 @@ let render_out_phrase fmt ophr =
 
 exception Error of exn * string
 
+let higlo_classes =
+  let keyword = function
+    0 -> "hl kwa"
+  | 1 -> "hl kwb"
+  | 2 -> "hl kwc"
+  | 3 -> "hl kwd"
+  | n -> "hl kw"^(string_of_int n)
+  in
+  let symbol _ = "sym" in
+  {
+    Higlo.id = "" ;
+    keyword ;
+    lcomment = "hl slc" ;
+    bcomment = "hl com" ;
+    string = "hl str" ;
+    text = "hl std" ;
+    numeric = "hl num" ;
+    directive = "hl dir" ;
+    escape = "hl esc" ;
+    symbol ;
+    constant = "hl num" ;
+  }
+
+
 let syntax_highlighting code =
-  Higlo.to_xml ~lang:"ocaml" code
+  Higlo.to_xml ~classes:higlo_classes ~lang:"ocaml" code
   |> Xtmpl_xml.to_string
 
 let expand_code_block contents =
