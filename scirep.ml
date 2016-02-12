@@ -166,7 +166,7 @@ let apply_variables assoc key =
   | Some x -> x
   | None -> key
 
-let main input_fn output_fn =
+let main title input_fn output_fn =
   let html =
     In_channel.read_all input_fn
     |> Omd.of_string
@@ -174,7 +174,7 @@ let main input_fn output_fn =
     |> Omd.to_html
   in
   let variables = [
-    "template_head_title", "Title" ;
+    "template_head_title", title ;
     "template_body", html ;
     "template_css", style_css ;
   ]
@@ -183,4 +183,4 @@ let main input_fn output_fn =
   Buffer.add_substitute buf (apply_variables variables) template ;
   Out_channel.write_all output_fn ~data:(Buffer.contents buf)
 
-let () = main Sys.argv.(1) Sys.argv.(2)
+let () = main Sys.argv.(1) Sys.argv.(2) Sys.argv.(3)
