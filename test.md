@@ -1,8 +1,8 @@
-# Folding on lists
+# List traversal with fold
 
 The first and foremost feature of a functional language is that
 variables can't be modified (they are said to be *immutable*). A
-direct implication of this is that `for` or `while` loops become
+direct implication of this is that `for` and `while` loops become
 useless: since iterations can't modify variables, they are doomed to
 reproduce the same calculation each time. In functional programming,
 loops are replaced by *recursive functions* to perform iterative
@@ -12,13 +12,14 @@ calculations. Let us start with an example.
 
 Suppose we'd like to compute the sum of <<n>> integers
 <<x_1,\dots,x_n>>. A simple recursive formulation for this is to say
-that we can compute the sum of the first <<n-1>> integer and add the
+that we can compute the sum of the first <<n-1>> integers and add the
 last one to the result. In more formal terms:
 
 $$
 \begin{eqnarray}
 S_n & = & \sum\_{i=1}^{n} x_i\\\\
-& = & \sum\_{i=1}^{n - 1} x_i + 1
+& = & \sum\_{i=1}^{n - 1} x_i + x_n\\\\
+& = & S\_{n-1} + x_n
 \end{eqnarray}
 $$
 
@@ -59,7 +60,7 @@ let rec concat xs = match xs with
   | h :: t -> h ^ concat t
 ;;
 ```
-Now the neutral element is an empty list and the head of the list is
+Now the neutral element is an empty string and the head of the list is
 combined to the result of the recursive call using the append operator
 for strings `( ^ )`.
 
