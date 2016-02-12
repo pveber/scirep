@@ -10,6 +10,7 @@ let a = 1;;
 let b = A;;
 ```
 
-```ocaml eval=T
-fold
+```ocaml
+let i = I.const (Color.v_srgb 0.314 0.784 0.471);;
+show i;;
 ```

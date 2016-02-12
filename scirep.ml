@@ -2,6 +2,41 @@ open Core_kernel.Std
 
 let template = [%blob "template.html"]
 
+(* Toplevel initialisation *)
+let a = Topdirs.dir_quit
+let () = Toploop.initialize_toplevel_env ()
+
+
+let eval_string s =
+  let lexbuf = Lexing.from_string s in
+  let phrase = !Toploop.parse_toplevel_phrase lexbuf in
+  let success = Toploop.execute_phrase false Format.err_formatter phrase in
+  ignore success
+
+let () =
+  eval_string {|#use "topfind";;|} ;
+  eval_string {|#require "vg.svg core_kernel";;|} ;
+  eval_string {|open Core_kernel.Std;;|} ;
+  eval_string {|open Gg;;|} ;
+  eval_string {|open Vg;;|} ;
+  eval_string {|
+let show
+      ?(size = Size2.v 100. 100.)
+      ?(view = Box2.v P2.o (Size2.v 1. 1.))
+      image : string =
+  let buf = Buffer.create 251 in
+  let r = Vgr.create (Vgr_svg.target ()) (`Buffer buf) in
+  ignore (Vgr.render r (`Image (size, view, image)));
+  ignore (Vgr.render r `End) ;
+  Buffer.contents buf
+  |> String.substr_replace_all ~pattern:"use l:href" ~with_:"use xlink:href"
+  |> String.substr_replace_all ~pattern:"xmlns:l" ~with_:"xmlns:xlink"
+  |> String.split ~on:'\n'
+  |> List.tl_exn
+  |> String.concat ~sep:"\n"
+;;|} ;
+  ()
+
 (* Gather results from evaluations *)
 let out_phrases = ref []
 
@@ -10,10 +45,46 @@ let print_out_phrase = !Oprint.out_phrase
 let () =
   Oprint.out_phrase := fun _ phr -> out_phrases := phr :: !out_phrases
 
+let string_is_xml s =
+  try ignore (Ezxmlm.from_string s) ; true
+  with _ -> false
+
+(* let is_picture = *)
+(*   let open Outcometree in *)
+(*   function *)
+(*   | Otyp_constr (Oide_dot (Oide_ident "Vg", "image"), []) -> *)
+(*     true *)
+(*   | _ -> false *)
+
+
+(* let pictures_of_outcome fmt = *)
+(*   let open Outcometree in *)
+(*   let render ot = *)
+(*     !Oprint.out_type Format.std_formatter ot ; *)
+(*     if is_picture ot *)
+(*     then Format.pp_print_string fmt (render_picture ()) *)
+(*   in *)
+(*   function *)
+(*   | Ophr_eval (_, ot) -> render ot *)
+(*   | _ -> () *)
 
 let render_out_phrase fmt ophr =
-  print_out_phrase fmt ophr
+  let open Outcometree in
+  let display =
+    match ophr with
+    | Ophr_eval (Oval_string s, _) ->
+      if string_is_xml s then `Inject s
+      else `Print_value
+    | _ -> `Print_value
+  in
+  match display with
+  | `Print_value ->
+    print_out_phrase fmt ophr
+  | `Inject s ->
+    Format.pp_print_newline fmt () ;
+    Format.pp_print_string fmt s
 
+exception Error of exn * string
 
 let expand_code_block contents =
   let open Omd_representation in
@@ -40,9 +111,8 @@ let expand_code_block contents =
         printf "error evaluating %s" parsed_text
     with
     | End_of_file -> ()
-    | _  -> (
-        printf "error in %s" String.(sub contents start (length contents - start))
-      )
+    | Typetexp.Error (loc, env, err) ->
+      Typetexp.report_error env buf_formatter err
   in
   loop 0 ;
   Html ("pre", [], [ Raw (Buffer.contents buf) ])
