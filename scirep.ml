@@ -47,6 +47,7 @@ let print_out_phrase = !Oprint.out_phrase
 let () =
   Oprint.out_phrase := fun _ phr -> out_phrases := phr :: !out_phrases
 
+
 let string_is_xml s =
   try ignore (Ezxmlm.from_string s) ; true
   with _ -> false
@@ -100,6 +101,7 @@ let expand_code_block contents =
   let lexbuf = Lexing.from_string contents in
   let buf = Buffer.create 251 in
   let buf_formatter = Format.formatter_of_buffer buf in
+  Location.formatter_for_warnings := buf_formatter ;
   let rec loop start =
     try
       let phrase = !Toploop.parse_toplevel_phrase lexbuf in
@@ -111,13 +113,13 @@ let expand_code_block contents =
       in
       Format.fprintf buf_formatter "# %s" (syntax_highlighting parsed_text) ;
       let success = Toploop.execute_phrase true buf_formatter phrase in
-      if success then (
+      (* if success then ( *)
         let new_stuff = List.hd_exn !out_phrases in
         render_out_phrase buf_formatter new_stuff ;
         loop end_
-      )
-      else
-        printf "error evaluating %s" parsed_text
+      (* ) *)
+      (* else *)
+      (*   printf "error evaluating %s" parsed_text *)
     with
     | End_of_file -> ()
     | Typetexp.Error (loc, env, err) ->
