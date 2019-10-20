@@ -1,4 +1,4 @@
-open Core_kernel.Std
+open Core_kernel
 
 let template = [%blob "template.html"]
 
@@ -18,7 +18,7 @@ let eval_string s =
 let () =
   eval_string {|#use "topfind";;|} ;
   eval_string {|#require "vg.svg core_kernel";;|} ;
-  eval_string {|open Core_kernel.Std;;|} ;
+  eval_string {|open Core_kernel;;|} ;
   eval_string {|open Gg;;|} ;
   eval_string {|open Vg;;|} ;
   eval_string {|
@@ -56,7 +56,7 @@ let render_out_phrase fmt ophr =
   let open Outcometree in
   let display =
     match ophr with
-    | Ophr_eval (Oval_string s, _) ->
+    | Ophr_eval (Oval_string (s,_,_), _) ->
       if string_is_xml s then `Inject s
       else `Print_value
     | _ -> `Print_value
@@ -68,33 +68,8 @@ let render_out_phrase fmt ophr =
     Format.pp_print_newline fmt () ;
     Format.pp_print_string fmt s
 
-let higlo_classes =
-  let keyword = function
-    0 -> "hl kwa"
-  | 1 -> "hl kwb"
-  | 2 -> "hl kwc"
-  | 3 -> "hl kwd"
-  | n -> "hl kw"^(string_of_int n)
-  in
-  let symbol _ = "sym" in
-  {
-    Higlo.id = "" ;
-    keyword ;
-    lcomment = "hl slc" ;
-    bcomment = "hl com" ;
-    string = "hl str" ;
-    text = "hl std" ;
-    numeric = "hl num" ;
-    directive = "hl dir" ;
-    escape = "hl esc" ;
-    symbol ;
-    constant = "hl num" ;
-  }
-
-
 let syntax_highlighting code =
-  Higlo.to_xml ~classes:higlo_classes ~lang:"ocaml" code
-  |> Xtmpl_xml.to_string
+  Scirep.Ocamltohtml.html_of_string code
 
 let expand_code_block contents =
   let open Omd_representation in
@@ -112,7 +87,7 @@ let expand_code_block contents =
         |> String.lstrip
       in
       Format.fprintf buf_formatter "# %s" (syntax_highlighting parsed_text) ;
-      let success = Toploop.execute_phrase true buf_formatter phrase in
+      let _success = Toploop.execute_phrase true buf_formatter phrase in
       (* if success then ( *)
         let new_stuff = List.hd_exn !out_phrases in
         render_out_phrase buf_formatter new_stuff ;
@@ -142,18 +117,30 @@ let code_block_expansion items =
       | item -> item
     )
 
+let guess_title contents =
+  let first_h1 = List.find_map contents ~f:(function
+      | Omd.H1 x -> Some x
+      | _ -> None
+    )
+  in
+  Option.map first_h1 ~f:Omd.to_text
+
 let apply_variables assoc key =
-  match List.Assoc.find assoc key with
+  match List.Assoc.find ~equal:String.equal assoc key with
   | Some x -> x
   | None -> key
 
-let main title input_fn output_fn =
-  let html =
+let main input_fn output_fn =
+  let markdown = 
     In_channel.read_all input_fn
     |> Omd.of_string
+  in
+  let html =
+    markdown
     |> code_block_expansion
     |> Omd.to_html
   in
+  let title = Option.value ~default:"" (guess_title markdown) in
   let variables = [
     "template_head_title", title ;
     "template_body", html ;
@@ -161,7 +148,7 @@ let main title input_fn output_fn =
   ]
   in
   let buf = Buffer.create 253 in
-  Buffer.add_substitute buf (apply_variables variables) template ;
+  Caml.Buffer.add_substitute buf (apply_variables variables) template ;
   Out_channel.write_all output_fn ~data:(Buffer.contents buf)
 
-let () = main Sys.argv.(1) Sys.argv.(2) Sys.argv.(3)
+let () = main Sys.argv.(1) Sys.argv.(2)

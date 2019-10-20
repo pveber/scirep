@@ -1,0 +1,17 @@
+(executable
+  (name scirep_app)
+  (public_name scirep)
+  (modes byte)
+  (libraries
+    compiler-libs.toplevel
+    core_kernel
+    ezxmlm
+    omd
+    scirep
+    vg.svg
+    xtmpl)
+  (flags -rectypes)
+  (preprocess (pps ppx_blob))
+  (preprocessor_deps (file template.html) (file style.css))
+)
+  
