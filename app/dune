@@ -8,8 +8,7 @@
     ezxmlm
     omd
     scirep
-    vg.svg
-    xtmpl)
+    vg.svg)
   (flags -rectypes)
   (preprocess (pps ppx_blob))
   (preprocessor_deps (file template.html) (file style.css))

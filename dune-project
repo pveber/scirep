@@ -25,8 +25,6 @@ core. It also borrows quite some code from makmash and stog.
     compiler-libs
     core_kernel
     ezxmlm
-    higlo
     omd
     ppx_blob
-    vg
-    xtmpl))
+    vg))

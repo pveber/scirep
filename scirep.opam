@@ -22,11 +22,9 @@ depends: [
   "compiler-libs"
   "core_kernel"
   "ezxmlm"
-  "higlo"
   "omd"
   "ppx_blob"
   "vg"
-  "xtmpl"
 ]
 build: [
   ["dune" "subst"] {pinned}
