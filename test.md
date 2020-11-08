@@ -128,11 +128,11 @@ let cut_outline path img =
 ;;
   
 let quadrilateral a b c d p =
-  p >>
-  P.sub a >>
-    P.line b >>
-    P.line c >>
-    P.line d >>
+  p |>
+  P.sub a |>
+    P.line b |>
+    P.line c |>
+    P.line d |>
     P.close
 ;;
 
@@ -150,7 +150,7 @@ let nested_squares_path n =
     let b' = V2.( b + 0.1 * (a - b) ) in
     let c' = V2.( c + 0.1 * (b - c) ) in
     let d' = V2.( d + 0.1 * (c - d) ) in
-	(accu >> quadrilateral a' b' c' d',
+	(accu |> quadrilateral a' b' c' d',
 	 (a', b', c', d'))
   in	
   List.init 100 ident

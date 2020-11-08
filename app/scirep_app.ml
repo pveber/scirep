@@ -100,7 +100,8 @@ let expand_code_block contents =
     | Typetexp.Error (loc, env, err) ->
       Typetexp.report_error env buf_formatter err
     | Typecore.Error (loc, env, err) ->
-      Typecore.report_error env buf_formatter err
+      Typecore.report_error ~loc env err
+      |> Location.print_report Format.err_formatter
   in
   loop 0 ;
   Html ("pre", [], [ Raw (Buffer.contents buf) ])
