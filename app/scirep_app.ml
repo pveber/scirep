@@ -5,7 +5,6 @@ let template = [%blob "template.html"]
 let style_css = [%blob "style.css"]
 
 (* Toplevel initialisation *)
-let a = Topdirs.dir_quit
 let () =
   Toploop.initialize_toplevel_env () ;
   Topfind.log := ignore ;
