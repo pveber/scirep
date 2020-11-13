@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 
 let template = [%blob "template.html"]
 
@@ -113,7 +113,7 @@ let apply_variables assoc key =
   | Some x -> x
   | None -> key
 
-let main input_fn output_fn =
+let main ~input_fn ~output_fn () =
   let markdown =
     In_channel.read_all input_fn
     |> Omd.of_string
@@ -134,4 +134,15 @@ let main input_fn output_fn =
   Caml.Buffer.add_substitute buf (apply_variables variables) template ;
   Out_channel.write_all output_fn ~data:(Buffer.contents buf)
 
-let () = main Sys.argv.(1) Sys.argv.(2)
+let command =
+  let open Command.Let_syntax in
+  Command.basic
+    ~summary:"scirep"
+    [%map_open
+      let input_fn = anon ("input_file" %: string)
+      and output_fn = anon ("output_file" %: string)
+      in
+      main ~input_fn ~output_fn
+    ]
+
+let () = Command.run command

@@ -4,11 +4,11 @@
   (modes byte)
   (libraries
     compiler-libs.toplevel
-    core_kernel
+    core
     findlib.top
     omd
     scirep)
-  (preprocess (pps ppx_blob))
+  (preprocess (pps ppx_blob ppx_jane))
   (preprocessor_deps (file template.html) (file style.css))
 )
   
