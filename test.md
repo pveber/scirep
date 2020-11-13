@@ -122,6 +122,9 @@ tables and so on. But that's yet another story.
 P.S. A call to `fold` is hidden in this messy code. Will you find it?
 
 ```ocaml
+open Gg;;
+open Vg;;
+
 let cut_outline path img =
   let area = `O { P.o with P.width = 0.001 } in
   I.cut ~area path img
@@ -153,7 +156,7 @@ let nested_squares_path n =
 	(accu |> quadrilateral a' b' c' d',
 	 (a', b', c', d'))
   in	
-  List.init 100 ident
+  List.init 100 (fun x -> x)
   |> fold f (P.empty, init)
   |> fst
 ;;
@@ -163,5 +166,5 @@ let nested_squares =
   |> I.move (V2.v 0.5 0.5)
 ;;
 
-show nested_squares;;
+Scirep.Show.vg nested_squares;;
 ```

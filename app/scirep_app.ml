@@ -6,38 +6,11 @@ let style_css = [%blob "style.css"]
 
 (* Toplevel initialisation *)
 let a = Topdirs.dir_quit
-let () = Toploop.initialize_toplevel_env ()
-
-
-let eval_string s =
-  let lexbuf = Lexing.from_string s in
-  let phrase = !Toploop.parse_toplevel_phrase lexbuf in
-  let success = Toploop.execute_phrase false Format.err_formatter phrase in
-  ignore success
-
 let () =
-  eval_string {|#use "topfind";;|} ;
-  eval_string {|#require "vg.svg core_kernel";;|} ;
-  eval_string {|open Core_kernel;;|} ;
-  eval_string {|open Gg;;|} ;
-  eval_string {|open Vg;;|} ;
-  eval_string {|
-let show
-      ?(size = Size2.v 100. 100.)
-      ?(view = Box2.v P2.o (Size2.v 1. 1.))
-      image : string =
-  let buf = Buffer.create 251 in
-  let r = Vgr.create (Vgr_svg.target ()) (`Buffer buf) in
-  ignore (Vgr.render r (`Image (size, view, image)));
-  ignore (Vgr.render r `End) ;
-  Buffer.contents buf
-  |> String.substr_replace_all ~pattern:"use l:href" ~with_:"use xlink:href"
-  |> String.substr_replace_all ~pattern:"xmlns:l" ~with_:"xmlns:xlink"
-  |> String.split ~on:'\n'
-  |> List.tl_exn
-  |> String.concat ~sep:"\n"
-;;|} ;
-  ()
+  Toploop.initialize_toplevel_env () ;
+  Topfind.log := ignore ;
+  Findlib.init () ;
+  Topfind.load_deeply ["scirep"]
 
 (* Gather results from evaluations *)
 let out_phrases = ref []
@@ -47,29 +20,8 @@ let print_out_phrase = !Oprint.out_phrase
 let () =
   Oprint.out_phrase := fun _ phr -> out_phrases := phr :: !out_phrases
 
-
-let string_is_xml s =
-  try ignore (Ezxmlm.from_string s) ; true
-  with _ -> false
-
-let render_out_phrase fmt ophr =
-  let open Outcometree in
-  let display =
-    match ophr with
-    | Ophr_eval (Oval_string (s,_,_), _) ->
-      if string_is_xml s then `Inject s
-      else `Print_value
-    | _ -> `Print_value
-  in
-  match display with
-  | `Print_value ->
-    print_out_phrase fmt ophr
-  | `Inject s ->
-    Format.pp_print_newline fmt () ;
-    Format.pp_print_string fmt s
-
 let syntax_highlighting code =
-  Scirep.Ocamltohtml.html_of_string code
+  Scirep.html_of_string code
 
 let code_block_error_display code =
   (
@@ -78,11 +30,37 @@ let code_block_error_display code =
   )
   |> String.concat ~sep:"\n"
 
+(* adapted from a code by D. Buenzli: https://discuss.ocaml.org/t/html-encoding-of-string/4289/4 *)
+let add_esc : Buffer.t -> string -> pos:int -> len:int -> unit = fun b s ~pos ~len ->
+  let add = Buffer.add_string in
+  let max_idx = len - 1 in
+  let flush b start i =
+    if start < len then Buffer.add_substring b s ~pos:start ~len:(i - start)
+  in
+  let rec loop start i =
+    if i > max_idx then flush b start i else
+    let next = i + 1 in
+    match String.get s i with
+    | '&' -> flush b start i; add b "&amp;"; loop next next
+    | '<' -> flush b start i; add b "&lt;"; loop next next
+    | '>' -> flush b start i; add b "&gt;"; loop next next
+    | '\'' -> flush b start i; add b "&apos;"; loop next next
+    | '\"' -> flush b start i; add b "&quot;"; loop next next
+    | '@' -> flush b start i; add b "&commat;"; loop next next
+    | _ -> loop start next
+  in
+  loop pos pos
+
 let expand_code_block contents =
   let open Omd_representation in
   let lexbuf = Lexing.from_string contents in
   let buf = Buffer.create 251 in
   let buf_formatter = Format.formatter_of_buffer buf in
+  let buf_escaped_formatter =
+    Format.make_formatter
+      (fun s pos len -> add_esc buf s ~pos ~len)
+      ignore
+  in
   Location.formatter_for_warnings := buf_formatter ;
   let rec loop start =
     try
@@ -90,13 +68,15 @@ let expand_code_block contents =
       let end_ = lexbuf.Lexing.lex_curr_pos in
       let bytes_read = end_ - start in
       let parsed_text =
-        String.sub contents start bytes_read
+        String.sub contents ~pos:start ~len:bytes_read
         |> String.lstrip
       in
       Format.fprintf buf_formatter "# %s" (syntax_highlighting parsed_text) ;
       let _success = Toploop.execute_phrase true buf_formatter phrase in
       let new_stuff = List.hd_exn !out_phrases in
-      render_out_phrase buf_formatter new_stuff ;
+      Buffer.add_char buf '\n' ;
+      print_out_phrase buf_escaped_formatter new_stuff ;
+      Scirep.flush buf_formatter ;
       loop end_
     with
     | End_of_file -> ()
@@ -134,7 +114,7 @@ let apply_variables assoc key =
   | None -> key
 
 let main input_fn output_fn =
-  let markdown = 
+  let markdown =
     In_channel.read_all input_fn
     |> Omd.of_string
   in

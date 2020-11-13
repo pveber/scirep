@@ -5,11 +5,9 @@
   (libraries
     compiler-libs.toplevel
     core_kernel
-    ezxmlm
+    findlib.top
     omd
-    scirep
-    vg.svg)
-  (flags -rectypes)
+    scirep)
   (preprocess (pps ppx_blob))
   (preprocessor_deps (file template.html) (file style.css))
 )
