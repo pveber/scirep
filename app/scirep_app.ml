@@ -71,6 +71,13 @@ let render_out_phrase fmt ophr =
 let syntax_highlighting code =
   Scirep.Ocamltohtml.html_of_string code
 
+let code_block_error_display code =
+  (
+    String.split code ~on:'\n'
+    |> List.mapi ~f:(fun i -> sprintf "% 3d:  %s" (i + 1))
+  )
+  |> String.concat ~sep:"\n"
+
 let expand_code_block contents =
   let open Omd_representation in
   let lexbuf = Lexing.from_string contents in
@@ -88,22 +95,15 @@ let expand_code_block contents =
       in
       Format.fprintf buf_formatter "# %s" (syntax_highlighting parsed_text) ;
       let _success = Toploop.execute_phrase true buf_formatter phrase in
-      (* if success then ( *)
-        let new_stuff = List.hd_exn !out_phrases in
-        render_out_phrase buf_formatter new_stuff ;
-        loop end_
-      (* ) *)
-      (* else *)
-      (*   printf "error evaluating %s" parsed_text *)
+      let new_stuff = List.hd_exn !out_phrases in
+      render_out_phrase buf_formatter new_stuff ;
+      loop end_
     with
     | End_of_file -> ()
-    | Typetexp.Error (loc, env, err) ->
-      Typetexp.report_error env buf_formatter err
-    | Typecore.Error (loc, env, err) ->
-      Typecore.report_error ~loc env err
-      |> Location.print_report Format.err_formatter
-    | Env.Error e ->
-      Env.report_error Format.err_formatter e
+    | e -> (
+        Format.eprintf "In block:\n%s" (code_block_error_display contents) ;
+        Location.report_exception Format.err_formatter e
+      )
   in
   loop 0 ;
   Html ("pre", [], [ Raw (Buffer.contents buf) ])
