@@ -112,7 +112,15 @@ let apply_variables assoc key =
   | Some x -> x
   | None -> key
 
-let main ~input_fn ~output_fn () =
+let load_libs libs =
+  try Topfind.load_deeply libs
+  with Fl_package_base.No_such_package (name, _) -> (
+      Printf.eprintf "Error: library %s is not available\n" name ;
+      exit 1
+    )
+
+let main ~input_fn ~output_fn ~libs () =
+  load_libs libs ;
   let markdown =
     In_channel.read_all input_fn
     |> Omd.of_string
@@ -140,8 +148,10 @@ let command =
     [%map_open
       let input_fn = anon ("input_file" %: string)
       and output_fn = anon ("output_file" %: string)
+      and libs =
+        flag "--libs" (optional_with_default [] (Arg_type.comma_separated string)) ~doc:"LIBS List of libraries to load"
       in
-      main ~input_fn ~output_fn
+      main ~input_fn ~output_fn ~libs
     ]
 
 let () = Command.run command
