@@ -7,9 +7,11 @@ let style_css = [%blob "style.css"]
 (* Toplevel initialisation *)
 let () =
   Toploop.initialize_toplevel_env () ;
-  Topfind.log := ignore ;
   Findlib.init () ;
-  Topfind.load_deeply ["scirep"]
+  Topfind.log := ignore ;
+  Topdirs.dir_directory (Findlib.ocaml_stdlib () ^ "/../findlib") ;
+  Topfind.add_predicates [ "byte"; "toploop" ];
+  Topfind.load ["scirep"]
 
 (* Gather results from evaluations *)
 let out_phrases = ref []
@@ -49,6 +51,29 @@ let add_esc : Buffer.t -> string -> pos:int -> len:int -> unit = fun b s ~pos ~l
     | _ -> loop start next
   in
   loop pos pos
+let pop_buffer b =
+  let s = Buffer.contents b in
+  Buffer.clear b ;
+  s
+
+let rec phrase_groups = function
+  | [] -> []
+  | `Text s :: t -> (
+      match phrase_groups t with
+      | [] -> `Text [ s ] :: []
+      | `Text xs :: rest -> `Text (s :: xs) :: rest
+      | `Insert _ :: _ as tail -> `Text [ s ] :: tail
+    )
+  | `Insert _ as i :: t ->
+    i :: phrase_groups t
+
+let flush_inserts () =
+  let lid = Longident.unflatten ["Scirep";"flush"] |> Option.value_exn in
+  let env = !Toploop.toplevel_env in
+  let path, _ = Env.find_value_by_name lid env in
+  let obj = Toploop.(eval_value_path !toplevel_env) path in
+  let f : unit -> Scirep.insert list = Obj.magic obj in
+  f ()
 
 let expand_code_block contents =
   let open Omd_representation in
@@ -60,8 +85,9 @@ let expand_code_block contents =
       (fun s pos len -> add_esc buf s ~pos ~len)
       ignore
   in
-  Location.formatter_for_warnings := buf_formatter ;
-  let rec loop start =
+  Location.formatter_for_warnings := buf_formatter ; (* FIXME: maybe use a distinct buffer? *)
+  Topdirs.dir_install_printer buf_formatter (Longident.unflatten ["Scirep";"pp_insert"] |> Option.value_exn) ;
+  let rec loop start outputs =
     try
       let phrase = !Toploop.parse_toplevel_phrase lexbuf in
       let end_ = lexbuf.Lexing.lex_curr_pos in
@@ -74,29 +100,36 @@ let expand_code_block contents =
       let _success = Toploop.execute_phrase true buf_formatter phrase in
       let new_stuff = List.hd_exn !out_phrases in
       Buffer.add_char buf '\n' ;
-      print_out_phrase buf_escaped_formatter new_stuff ;
-      Scirep.flush buf_formatter ;
-      loop end_
+      let outputs =
+        print_out_phrase buf_escaped_formatter new_stuff ;
+        List.map (flush_inserts ()) ~f:(fun x -> `Insert x)
+        @ `Text (pop_buffer buf)
+        :: outputs
+      in
+      loop end_ outputs
     with
-    | End_of_file -> ()
+    | End_of_file -> List.rev outputs
     | e -> (
-        Format.eprintf "In block:\n%s" (code_block_error_display contents) ;
-        Location.report_exception Format.err_formatter e
+        Format.eprintf "In block:\n%s\n" (code_block_error_display contents) ;
+        Location.report_exception Format.err_formatter e ;
+        exit 1
       )
   in
-  loop 0 ;
-  Html ("pre", [], [ Raw (Buffer.contents buf) ])
+  let outputs = loop 0 [] in
+  let groups = phrase_groups outputs in
+  List.map groups ~f:(function
+      | `Insert i -> Raw (Scirep.render_insert i)
+      | `Text xs ->
+        let contents = List.map xs ~f:(fun s -> Raw s) in
+        Html ("pre", [], contents)
+    )
 
 let code_block_expansion items =
   let open Omd_representation in
-  List.map items ~f:(function
+  List.concat_map items ~f:(function
       | Code_block ("ocaml", contents) ->
         expand_code_block contents
-      | Code_block (lang, contents) as cb ->
-        printf "lang: %s\n" lang ;
-        print_endline contents ;
-        cb
-      | item -> item
+      | item -> [ item ]
     )
 
 let guess_title contents =

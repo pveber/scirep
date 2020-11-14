@@ -1,6 +1,7 @@
 open Core_kernel
 
 type insert =
+  | Svg of string
   | Vg of Vg.image
 
 let render_vg image =
@@ -19,20 +20,29 @@ let render_vg image =
   |> List.tl_exn
   |> String.concat ~sep:"\n"
 
-let buffer = ref []
+let render_insert = function
+  | Svg x -> x
+  | Vg i -> render_vg i
+
+let buffer = Queue.create ()
+
+let pp_insert fmt insert =
+  Queue.enqueue buffer insert ;
+  Format.pp_print_string fmt "<abstr>"
+
+let flush () =
+  let xs = Queue.to_list buffer in
+  Queue.clear buffer ;
+  xs
 
 module Show = struct
-  let vg p =
-    buffer := Vg p :: !buffer
+  let svg f =
+    let fn = "delme.svg" in
+    f fn ;
+    Svg (In_channel.read_all fn)
+
+  let vg p = Vg p
 end
 
-let flush fmt =
-  List.iter !buffer ~f:(fun insert ->
-      Format.pp_print_string fmt (
-        match insert with
-        | Vg image -> render_vg image
-      )
-    ) ;
-  buffer := []
 
 let html_of_string = Ocamltohtml.html_of_string

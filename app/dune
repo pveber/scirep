@@ -2,6 +2,8 @@
   (name scirep_app)
   (public_name scirep)
   (modes byte)
+  (modules scirep_app)
+  (link_flags (-linkall))
   (libraries
     compiler-libs.toplevel
     core
@@ -11,4 +13,3 @@
   (preprocess (pps ppx_blob ppx_jane))
   (preprocessor_deps (file template.html) (file style.css))
 )
-  
