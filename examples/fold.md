@@ -10,17 +10,17 @@ calculations. Let us start with an example.
 
 ## Sum of integers
 
-Suppose we'd like to compute the sum of <<n>> integers
-<<x_1,\dots,x_n>>. A simple recursive formulation for this is to say
-that we can compute the sum of the first <<n-1>> integers and add the
+Suppose we'd like to compute the sum of $n$ integers
+$x_1,\dots,x_n$. A simple recursive formulation for this is to say
+that we can compute the sum of the first $n-1$ integers and add the
 last one to the result. In more formal terms:
 
 $$
-\begin{eqnarray}
+\begin{aligned}
 S_n & = & \sum\_{i=1}^{n} x_i\\\\
 & = & \sum\_{i=1}^{n - 1} x_i + x_n\\\\
 & = & S\_{n-1} + x_n
-\end{eqnarray}
+\end{aligned}
 $$
 
 This formulation can be translated *verbatim* in OCaml:
