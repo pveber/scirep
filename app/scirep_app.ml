@@ -96,12 +96,16 @@ let expand_code_block contents =
         String.sub contents ~pos:start ~len:bytes_read
         |> String.lstrip
       in
-      Format.fprintf buf_formatter "# %s" (syntax_highlighting parsed_text) ;
+      Format.pp_print_string buf_formatter "# " ;
+      Format.pp_print_string buf_formatter (String.concat_map (syntax_highlighting parsed_text) ~f:(function '\n' -> "\n  " | c -> Char.to_string c)) ;
       let _success = Toploop.execute_phrase true buf_formatter phrase in
       let new_stuff = List.hd_exn !out_phrases in
       Buffer.add_char buf '\n' ;
       let outputs =
+        Format.pp_print_string buf_formatter {|<span style="color:darkgrey">|} ;
         print_out_phrase buf_escaped_formatter new_stuff ;
+        Format.pp_print_string buf_formatter "</span>" ;
+        Format.pp_print_char buf_formatter '\n' ;
         List.map (flush_inserts ()) ~f:(fun x -> `Insert x)
         @ `Text (pop_buffer buf)
         :: outputs
