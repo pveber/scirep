@@ -77,6 +77,11 @@ let flush_inserts () =
 
 let expand_code_block contents =
   let open Omd_representation in
+  let contents =
+    let stripped_contents = String.strip contents in
+    if String.is_suffix stripped_contents ~suffix:";;" then stripped_contents
+    else stripped_contents ^ ";;"
+  in
   let lexbuf = Lexing.from_string contents in
   let buf = Buffer.create 251 in
   let buf_formatter = Format.formatter_of_buffer buf in
