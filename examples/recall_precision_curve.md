@@ -136,15 +136,15 @@ easy to compute:
 let phi ~mu ~sigma x = Cdf.gaussian_P ~x:(x -. mu) ~sigma;;
 let inv_phi ~mu ~sigma p = Cdf.gaussian_Pinv ~p ~sigma +. mu;;
 
-let binormal_density p x =
+let binormal_precision p recall =
   let phi_neg = phi ~mu:p.mu_neg ~sigma:p.sigma_neg in
   let inv_phi_pos = inv_phi ~mu:p.mu_pos ~sigma:p.sigma_pos in
   let alpha = p.alpha in
-  alpha *. x
+  alpha *. recall
   /.
-  (alpha *. x
+  (alpha *. recall
    +.
-   (1. -. alpha) *. (1. -. phi_neg (inv_phi_pos (1. -. x))))
+   (1. -. alpha) *. (1. -. phi_neg (inv_phi_pos (1. -. recall))))
 ;;
 
 ```
@@ -164,7 +164,7 @@ type curve = {
 let binormal_curve ?(n = 100) ?col ?lwd ?label p =
   let max_i = float (n - 1) in
   let x = Array.init n ~f:(fun i -> float i /. max_i) in
-  let y = Array.map x ~f:(binormal_density p) in
+  let y = Array.map x ~f:(binormal_precision p) in
   { x ; y ; col ; lwd ; label }
 ;;
 
@@ -322,6 +322,19 @@ Show.svg (fun fn ->
 );;
 ```
 
+From here, one can apply any integration scheme to compute the area
+under the curve. Let's try something simple:
+
+```ocaml
+let auc_binormal p =
+  let n = 1_000 in
+  let x = Array.init n ~f:(fun i -> float (i + 1) /. float n) in
+  let y = Array.map x ~f:(binormal_precision p) in
+  Stats.mean y
+;;
+```
+
+
 ### Lower trapezoidal estimator
 
 ```ocaml
@@ -379,6 +392,8 @@ let auc_average_precision (Evaluation_data xs) =
 
 ### Estimator comparison
 
+Let's test the three implementations by comparing their results:
+
 ```ocaml
 Show.svg (fun fn ->
   let open OCamlR_base in
@@ -394,7 +409,9 @@ Show.svg (fun fn ->
   in
   let trapezoidal_lt = compute auc_trapezoidal_lt in
   let average_precision = compute auc_average_precision in
+  let binormal = compute (fun sample -> auc_binormal (binormal_estimate sample)) in
   let l = List_.create [
+      Some "binormal", binormal ;
       Some "trapezoidal", trapezoidal_lt ;
       Some "average_precision", average_precision ;
     ]
@@ -406,6 +423,9 @@ Show.svg (fun fn ->
 ```
 
 ## Confidence intervals
+
+[Brodersen](#ref_Brodersen) and colleagues advertise a simple
+confidence interval for the average precision:
 
 ```ocaml
 let logit p = Float.log (p /. (1. -. p));;
@@ -423,6 +443,8 @@ let logit_confidence_interval ~alpha ~theta_hat ~n =
   sigmoid (eta_hat +. delta)
 ;;
 ```
+
+We can confirm by simulation it has the expected coverage property:
 
 ```ocaml
 let logit_confidence_interval_coverage_test ?(seed = 42) ?(sigma = 1.) ~n ~alpha () =
@@ -446,10 +468,10 @@ let _ = logit_confidence_interval_coverage_test ~n:1_000 ~alpha:0.1 ()
 
 ## References
 
-<a id="ref_Brodersen">[1]</a> 
+<a id="ref_Brodersen">[1]</a>
 *The binormal assumption on precision-recall curves*, Kay
 H. Brodersen, Cheng Soon Ong, Klaas E. Stephan and Joachim M. Buhmann
 
-<a id="ref_Boyd">[2]</a> 
+<a id="ref_Boyd">[2]</a>
 *Area Under the Precision-Recall Curve: Point Estimates and Confidence
 Intervals*, Kendrick Boyd, Kevin H. Eng and C. David Page
