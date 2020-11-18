@@ -3,3 +3,6 @@ fold.html: fold.md
 
 recall_precision_curve.html: recall_precision_curve.md
 	scirep --libs core_kernel,gsl,ocaml-r.graphics,ocaml-r.grDevices $< $@
+
+damped.html: damped.md
+	scirep --libs owl-ode,owl-plplot $< $@
