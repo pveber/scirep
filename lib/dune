@@ -2,5 +2,5 @@
   (name scirep)
   (public_name scirep)
   (private_modules Ocaml_lexer Ocamltohtml)
-  (libraries core_kernel tyxml vg.svg)
+  (libraries base64 core_kernel tyxml vg.svg)
   (preprocess (pps ppx_jane)))

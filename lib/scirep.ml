@@ -1,6 +1,7 @@
 open Core_kernel
 
 type insert =
+  | Png of string
   | Svg of string
   | Vg of Vg.image
 
@@ -20,8 +21,18 @@ let render_vg image =
   |> List.tl_exn
   |> String.concat ~sep:"\n"
 
+let html_picture format data =
+  let format = match format with
+    | `svg -> "svg+xml"
+    | `png -> "png"
+  in
+  Printf.sprintf
+    {|<img src="data:image/%s;base64,%s"></img>|}
+    format (Base64.encode_exn data)
+
 let render_insert = function
-  | Svg x -> x
+  | Png data -> html_picture `png data
+  | Svg data -> html_picture `svg data
   | Vg i -> render_vg i
 
 let buffer = Queue.create ()
@@ -36,10 +47,19 @@ let flush () =
   xs
 
 module Show = struct
-  let svg f =
-    let fn = "delme.svg" in
-    f fn ;
-    Svg (In_channel.read_all fn)
+  let with_temp_file ext ~f =
+    let fn = Stdlib.Filename.temp_file "scirep" ("." ^ ext) in
+    protect ~f:(fun () -> f fn) ~finally:(fun _ -> Stdlib.Sys.remove fn)
+
+  let render ext ~f =
+    with_temp_file ext ~f:(fun fn ->
+        f fn ;
+        In_channel.read_all fn
+      )
+
+  let png f = Png (render "png" ~f)
+
+  let svg f = Svg (render "svg" ~f)
 
   let vg p = Vg p
 end
