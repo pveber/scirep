@@ -205,19 +205,22 @@ let xy xs =
 
 let empirical_curve_points (Evaluation_data xs) =
   let npos = List.count xs ~f:snd in
-  let compare =
-    Tuple.T2.compare ~cmp1:Float.descending ~cmp2:Bool.descending
+  let compare (x, _) (y, _) = Float.compare y x in
+  let recall pos = float pos /. float npos in
+  let precision pos neg = float pos /. float (pos + neg) in
+  let data = List.sort xs ~compare in
+  let rec loop pos neg previous_threshold = function
+    | [] -> [ recall pos, precision pos neg ]
+    | (x, b) :: t ->
+      let pos, neg = if b then pos + 1, neg else pos, neg + 1 in
+      let tail = loop pos neg (Some x) t in
+      let group_end =
+        Option.value_map previous_threshold ~default:false ~f:Float.(( <> ) x)
+      in
+      if group_end then (recall pos, precision pos neg) :: tail
+      else tail
   in
-  List.sort xs ~compare
-  |> List.fold ~init:(0, 0, [ 0., 1. ])
-                  ~f:(fun (pos, neg, points) (_, b) ->
-      let pos, neg = if b then pos + 1, neg else pos, neg +1 in
-      let recall = float pos /. float npos in
-      let precision = float pos /. float (pos + neg) in
-      (pos, neg, (recall, precision) :: points)
-    )
-    |> trd3
-    |> List.rev
+  loop 0 0 None data
 ;;
 
 let empirical_curve ?col ?label ?lwd data =
