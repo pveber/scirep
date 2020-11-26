@@ -8,7 +8,9 @@ val flush : unit -> insert list
 
 module Show : sig
   val png : (string -> unit) -> insert
+  val png_file : string -> insert
   val svg : (string -> unit) -> insert
+  val svg_file : string -> insert
   val vg : Vg.image -> insert
 end
 

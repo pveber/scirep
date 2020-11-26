@@ -59,7 +59,11 @@ module Show = struct
 
   let png f = Png (render "png" ~f)
 
+  let png_file fn = Png (In_channel.read_all fn)
+
   let svg f = Svg (render "svg" ~f)
+
+  let svg_file fn = Svg (In_channel.read_all fn)
 
   let vg p = Vg p
 end
