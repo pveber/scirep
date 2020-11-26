@@ -11,7 +11,7 @@ let () =
   Topfind.log := ignore ;
   Topdirs.dir_directory (Findlib.ocaml_stdlib () ^ "/../findlib") ;
   Topfind.add_predicates [ "byte"; "toploop" ];
-  Topfind.load ["scirep"]
+  Topfind.load_deeply ["scirep"]
 
 (* Gather results from evaluations *)
 let out_phrases = ref []
@@ -94,7 +94,10 @@ let expand_code_block contents =
   Topdirs.dir_install_printer buf_formatter (Longident.unflatten ["Scirep";"pp_insert"] |> Option.value_exn) ;
   let rec loop start outputs =
     try
-      let phrase = !Toploop.parse_toplevel_phrase lexbuf in
+      let phrase =
+        !Toploop.parse_toplevel_phrase lexbuf
+        |> Toploop.preprocess_phrase Format.std_formatter
+      in
       let end_ = lexbuf.Lexing.lex_curr_pos in
       let bytes_read = end_ - start in
       let parsed_text =
