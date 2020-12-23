@@ -1,10 +1,5 @@
 open Core_kernel
 
-type insert =
-  | Png of string
-  | Svg of string
-  | Vg of Vg.image
-
 let render_vg image =
   let open Gg in
   let open Vg in
@@ -26,25 +21,9 @@ let html_picture format data =
     | `svg -> "svg+xml"
     | `png -> "png"
   in
-  Printf.sprintf
+  printf
     {|<img src="data:image/%s;base64,%s"></img>|}
     format (Base64.encode_exn data)
-
-let render_insert = function
-  | Png data -> html_picture `png data
-  | Svg data -> html_picture `svg data
-  | Vg i -> render_vg i
-
-let buffer = Queue.create ()
-
-let pp_insert fmt insert =
-  Queue.enqueue buffer insert ;
-  Format.pp_print_string fmt "<abstr>"
-
-let flush () =
-  let xs = Queue.to_list buffer in
-  Queue.clear buffer ;
-  xs
 
 module Show = struct
   let with_temp_file ext ~f =
@@ -57,16 +36,15 @@ module Show = struct
         In_channel.read_all fn
       )
 
-  let png f = Png (render "png" ~f)
+  let png f = html_picture `png (render "png" ~f)
 
-  let png_file fn = Png (In_channel.read_all fn)
+  let png_file fn = html_picture `png (In_channel.read_all fn)
 
-  let svg f = Svg (render "svg" ~f)
+  let svg f = html_picture `svg (render "svg" ~f)
 
-  let svg_file fn = Svg (In_channel.read_all fn)
+  let svg_file fn = html_picture `svg (In_channel.read_all fn)
 
-  let vg p = Vg p
+  let vg p = html_picture `svg (render_vg p)
 end
-
 
 let html_of_string = Ocamltohtml.html_of_string

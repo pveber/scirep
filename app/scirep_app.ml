@@ -4,6 +4,39 @@ let template = [%blob "template.html"]
 
 let style_css = [%blob "style.css"]
 
+(* This function is borrowed from mdx *)
+let redirect ~f =
+  let open Stdlib in
+  let module Unix = Caml_unix in
+  let stdout_backup = Unix.dup Unix.stdout in
+  let stderr_backup = Unix.dup Unix.stdout in
+  let filename = Filename.temp_file "ocaml-mdx" "stdout" in
+  let fd_out =
+    Unix.openfile filename Unix.[ O_WRONLY; O_CREAT; O_TRUNC ] 0o600
+  in
+  Unix.dup2 fd_out Unix.stdout ;
+  Unix.dup2 fd_out Unix.stderr ;
+  let ic = Stdlib.open_in filename in
+  let read_up_to = ref 0 in
+  let capture buf =
+    flush stdout;
+    flush stderr;
+    let pos = Unix.lseek fd_out 0 Unix.SEEK_CUR in
+    let len = pos - !read_up_to in
+    read_up_to := pos;
+    Stdlib.Buffer.add_channel buf ic len
+  in
+  Core.protect
+    ~f:(fun () -> f ~capture)
+    ~finally:(fun () ->
+      close_in_noerr ic;
+      Unix.close fd_out;
+      Unix.dup2 stdout_backup Unix.stdout ;
+      Unix.dup2 stderr_backup Unix.stderr ;
+      Unix.close stdout_backup;
+      Unix.close stderr_backup;
+      Sys.remove filename)
+
 (* Toplevel initialisation *)
 let () =
   Toploop.initialize_toplevel_env () ;
@@ -51,6 +84,7 @@ let add_esc : Buffer.t -> string -> pos:int -> len:int -> unit = fun b s ~pos ~l
     | _ -> loop start next
   in
   loop pos pos
+
 let pop_buffer b =
   let s = Buffer.contents b in
   Buffer.clear b ;
@@ -67,14 +101,6 @@ let rec phrase_groups = function
   | `Insert _ as i :: t ->
     i :: phrase_groups t
 
-let flush_inserts () =
-  let lid = Longident.unflatten ["Scirep";"flush"] |> Option.value_exn in
-  let env = !Toploop.toplevel_env in
-  let path, _ = Env.find_value_by_name lid env in
-  let obj = Toploop.(eval_value_path !toplevel_env) path in
-  let f : unit -> Scirep.insert list = Obj.magic obj in
-  f ()
-
 let expand_code_block contents =
   let open Omd_representation in
   let contents =
@@ -83,15 +109,17 @@ let expand_code_block contents =
     else stripped_contents ^ ";;"
   in
   let lexbuf = Lexing.from_string contents in
-  let buf = Buffer.create 251 in
-  let buf_formatter = Format.formatter_of_buffer buf in
-  let buf_escaped_formatter =
+  let stdout_buf = Buffer.create 251 in
+  let stdout = Format.formatter_of_buffer stdout_buf in
+  let toplevel_buf = Buffer.create 251 in
+  let toplevel_formatter =
     Format.make_formatter
-      (fun s pos len -> add_esc buf s ~pos ~len)
+      (fun s pos len -> add_esc toplevel_buf s ~pos ~len)
       ignore
   in
-  Location.formatter_for_warnings := buf_formatter ; (* FIXME: maybe use a distinct buffer? *)
-  Topdirs.dir_install_printer buf_formatter (Longident.unflatten ["Scirep";"pp_insert"] |> Option.value_exn) ;
+  let stderr_buf = Buffer.create 251 in
+  let stderr = Format.formatter_of_buffer stderr_buf in
+  Location.formatter_for_warnings := stderr ;
   let rec loop start outputs =
     try
       let phrase =
@@ -100,25 +128,54 @@ let expand_code_block contents =
       in
       let end_ = lexbuf.Lexing.lex_curr_pos in
       let bytes_read = end_ - start in
-      let parsed_text =
+      let rendered_code =
         String.sub contents ~pos:start ~len:bytes_read
         |> String.lstrip
+        |> syntax_highlighting
+        (* |> String.concat_map ~f:(function
+         *     | '\n' -> "\n  "
+         *     | c -> Char.to_string c
+         *   ) *)
       in
-      Format.pp_print_string buf_formatter "# " ;
-      Format.pp_print_string buf_formatter (String.concat_map (syntax_highlighting parsed_text) ~f:(function '\n' -> "\n  " | c -> Char.to_string c)) ;
-      let _success = Toploop.execute_phrase true buf_formatter phrase in
-      let new_stuff = List.hd_exn !out_phrases in
-      Buffer.add_char buf '\n' ;
-      let outputs =
-        Format.pp_print_string buf_formatter {|<span style="color:darkgrey">|} ;
-        print_out_phrase buf_escaped_formatter new_stuff ;
-        Format.pp_print_string buf_formatter "</span>" ;
-        Format.pp_print_char buf_formatter '\n' ;
-        List.map (flush_inserts ()) ~f:(fun x -> `Insert x)
-        @ `Text (pop_buffer buf)
-        :: outputs
+      redirect ~f:(fun ~capture ->
+          let _success = Toploop.execute_phrase true stdout phrase in
+          capture stdout_buf
+        ) ;
+      let is_img_line s =
+        String.is_prefix s ~prefix:"<img" (* && String.is_suffix s ~suffix:"</img>" *)
       in
-      loop end_ outputs
+      let parsed_stdout =
+        pop_buffer stdout_buf
+        |> String.split ~on:'\n'
+        |> List.map ~f:(fun s ->
+            if is_img_line s then `Insert (`Picture s)
+            else `Text s
+          )
+      in
+      let warnings = pop_buffer stderr_buf in
+      let interpreter_output =
+        let contents =
+          List.map !out_phrases ~f:(fun op ->
+              print_out_phrase toplevel_formatter op ;
+              let s = pop_buffer toplevel_buf in
+              Printf.sprintf {|<span style="color:darkgrey">%s</span>|} s
+            )
+          |> String.concat ~sep:"\n"
+        in
+        out_phrases := [] ;
+        contents
+      in
+      let add item xs = match item with
+        | `Text "" -> xs
+        | item -> item :: `Text "\n" :: xs
+      in
+      let add_multi items xs = List.fold_right items ~init:xs ~f:add in
+      loop end_ (
+        add (`Text interpreter_output) @@
+        add (`Text warnings) @@
+        add_multi parsed_stdout @@
+        add (`Text rendered_code) outputs
+      )
     with
     | End_of_file -> List.rev outputs
     | e -> (
@@ -130,7 +187,7 @@ let expand_code_block contents =
   let outputs = loop 0 [] in
   let groups = phrase_groups outputs in
   List.map groups ~f:(function
-      | `Insert i -> Raw (Scirep.render_insert i)
+      | `Insert (`Picture p) -> Raw p
       | `Text xs ->
         let contents = List.map xs ~f:(fun s -> Raw s) in
         Html ("pre", [], contents)
