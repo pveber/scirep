@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+
+    <title>Combining mdx and scirep</title>
+
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+            onload='renderMathInElement(document.body, {delimiters:[{left: "$$", right: "$$", display: true},{left: "$", right: "$", display: false}]});'></script>
+    <link rel="stylesheet" href="https://unpkg.com/marx-css/css/marx.min.css">
+    <style>
+      pre { line-height: 135%; font-size:90% }
+blockquote pre { margin-top: 10px }  /* better styling for quoted code pieces */
+code, .gutter pre {
+  font-family: "Droid Sans Mono", Consolas, monospace;
+}
+code { font-size: 100%; }
+h1 code, h2 code, h3 code, h4 code, h5 code, h5 code { font-size: 80%; }
+.governing, .ocaml .ot { color: black; font-weight: bold; }
+.keyword, .ocaml .kw, .ocaml .k, .planet .Keyword { color: #575bf4 }
+.keywordsign { color: #886643; }
+.constructor, .ocaml .dt, .ocaml .nc {
+  color: #829f1c;
+  font-weight: normal;
+}
+
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <h1 id="Combining-mdx-and-scirep">Combining mdx and scirep</h1>
+
+<p><code>scirep</code> can be used in combination with <code>mdx</code> to generate HTML
+reports from markdown documents with executable code chunks. This very
+file can be used with <code>mdx</code> in test mode through <code>dune</code> for
+instance. The command <code>dune runtest examples</code> updates the markdown
+file with toplevel outputs and stdout contents. The latter may include
+HTML <code>&lt;img&gt;</code> elements, which are rendered appropriately in the final
+document.</p>
+<p>Note that <code>mdx</code> and <code>scirep</code> in eval mode do not have the same
+behaviour, since <code>mdx</code> requires a leading <code>#</code> to evaluate a code
+block. Also the rendering is a bit different in the two modes
+(interpreter output cannot be grayed in <code>md2html</code> mode).</p>
+<pre><span class='keywordsign'>#</span> <span class='keywordsign'>#</span><span class='lower'>require</span> <span class='string'>&#34;scirep&#34;</span><span class='keywordsign'>;;</span></pre>
+
+<pre><span class='keywordsign'>#</span> <span class='governing'>open</span> <span class='constructor module'>Gg</span>
+<span class='keywordsign'>#</span> <span class='governing'>open</span> <span class='constructor module'>Vg</span>
+
+<span class='keywordsign'>#</span> <span class='governing'>let</span> <span class='lower'>gray</span> <span class='keywordsign'>=</span> <span class='constructor module'>I</span><span class='keywordsign'>.</span><span class='lower'>const</span> <span class='keywordsign'>(</span><span class='constructor module'>Color</span><span class='keywordsign'>.</span><span class='lower'>gray</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>5</span><span class='keywordsign'>)</span>
+<span class='keyword'>val</span> <span class='lower'>gray</span> <span class='keywordsign'>:</span> <span class='lower'>image</span> <span class='keywordsign'>=</span> <span class='keywordsign'>&#60;</span><span class='lower'>abstr</span><span class='keywordsign'>&#62;</span>
+
+<span class='keywordsign'>#</span> <span class='governing'>let</span> <span class='lower'>circle</span> <span class='keywordsign'>=</span> <span class='constructor module'>P</span><span class='keywordsign'>.</span><span class='lower'>empty</span> <span class='keywordsign infix'>|&#62;</span> <span class='constructor module'>P</span><span class='keywordsign'>.</span><span class='lower'>circle</span> <span class='keywordsign'>(</span><span class='constructor module'>P2</span><span class='keywordsign'>.</span><span class='lower'>v</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>5</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>5</span><span class='keywordsign'>)</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>4</span>
+<span class='keyword'>val</span> <span class='lower'>circle</span> <span class='keywordsign'>:</span> <span class='lower'>path</span> <span class='keywordsign'>=</span> <span class='keywordsign'>&#60;</span><span class='lower'>abstr</span><span class='keywordsign'>&#62;</span>
+
+<span class='keywordsign'>#</span> <span class='governing'>let</span> <span class='lower'>gray_circle</span> <span class='keywordsign'>=</span> <span class='constructor module'>I</span><span class='keywordsign'>.</span><span class='lower'>cut</span> <span class='lower'>circle</span> <span class='lower'>gray</span>
+<span class='keyword'>val</span> <span class='lower'>gray_circle</span> <span class='keywordsign'>:</span> <span class='lower'>image</span> <span class='keywordsign'>=</span> <span class='keywordsign'>&#60;</span><span class='lower'>abstr</span><span class='keywordsign'>&#62;</span>
+
+<span class='keywordsign'>#</span> <span class='governing'>let</span> <span class='lower'>image</span> <span class='keywordsign'>=</span>
+  <span class='governing'>let</span> <span class='lower'>area</span> <span class='keywordsign'>=</span> <span class='keywordsign'>`</span><span class='constructor module'>O</span> <span class='keywordsign'>{</span> <span class='constructor module'>P</span><span class='keywordsign'>.</span><span class='lower'>o</span> <span class='keyword'>with</span> <span class='constructor module'>P</span><span class='keywordsign'>.</span><span class='lower'>width</span> <span class='keywordsign'>=</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>04</span> <span class='keywordsign'>}</span> <span class='governing'>in</span>
+  <span class='governing'>let</span> <span class='lower'>black</span> <span class='keywordsign'>=</span> <span class='constructor module'>I</span><span class='keywordsign'>.</span><span class='lower'>const</span> <span class='constructor module'>Color</span><span class='keywordsign'>.</span><span class='lower'>black</span> <span class='governing'>in</span>
+  <span class='constructor module'>I</span><span class='keywordsign'>.</span><span class='lower'>cut</span> <span class='keywordsign'>~</span><span class='lower'>area</span> <span class='lower'>circle</span> <span class='lower'>black</span>
+<span class='keyword'>val</span> <span class='lower'>image</span> <span class='keywordsign'>:</span> <span class='lower'>image</span> <span class='keywordsign'>=</span> <span class='keywordsign'>&#60;</span><span class='lower'>abstr</span><span class='keywordsign'>&#62;</span>
+
+<span class='keywordsign'>#</span> <span class='constructor module'>Scirep</span><span class='keywordsign'>.</span><span class='constructor module'>Show</span><span class='keywordsign'>.</span><span class='lower'>vg</span> <span class='lower'>image</span></pre><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2ZXJzaW9uPSIxLjEiIHdpZHRoPSIxMDBtbSIgaGVpZ2h0PSIxMDBtbSIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGNvbG9yLXByb2ZpbGU9ImF1dG8iIGNvbG9yLWludGVycG9sYXRpb249ImxpbmVhclJHQiIgY29sb3ItaW50ZXJwb2xhdGlvbi1maWx0ZXJzPSJsaW5lYXJSR0IiPjxnIGZpbGw9Im5vbmUiIHN0cm9rZS1taXRlcmxpbWl0PSI5Ljk4MTIzIiB0cmFuc2Zvcm09Im1hdHJpeCgxMDAgMCAwIC0xMDAgLTAgMTAwKSI+PGRlZnM+PHBhdGggaWQ9ImkxIiBkPSJNMC45IDAuNUEgMC40IDAuNCAwIDAgMSAwLjEgMC41QSAwLjQgMC40IDAgMCAxIDAuOSAwLjVaIi8+PC9kZWZzPjx1c2UgeGxpbms6aHJlZj0iI2kxIiBzdHJva2Utd2lkdGg9IjAuMDQiIHN0cm9rZT0iIzAwMDAwMCIvPjwvZz48L3N2Zz4="></img><pre><span class='keywordsign'>-</span> <span class='keywordsign'>:</span> <span class='lower'>unit</span> <span class='keywordsign'>=</span> <span class='keywordsign'>(</span><span class='keywordsign'>)</span></pre>
+    </main>
+  </body>
+</html>
