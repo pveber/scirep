@@ -1,11 +1,14 @@
 fold.html: fold.md
-	scirep --libs vg $< $@
+	scirep eval --libs vg $< $@
 
 recall_precision_curve.html: recall_precision_curve.md
-	scirep --libs core_kernel,gsl,ocaml-r.graphics,ocaml-r.grDevices $< $@
+	scirep eval --libs core_kernel,gsl,ocaml-r.graphics,ocaml-r.grDevices $< $@
 
 damped.html: damped.md
-	scirep --libs owl-ode,owl-plplot $< $@
+	scirep eval --libs owl-ode,owl-plplot $< $@
 
 deriving.html: deriving.md
-	scirep --libs core,ppx_sexp_conv,bistro.ppx,bistro $< $@
+	scirep eval --libs core,ppx_sexp_conv,bistro.ppx,bistro $< $@
+
+mdx_example.html: mdx_example.md
+	scirep md2html $< $@
