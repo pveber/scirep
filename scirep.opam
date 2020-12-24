@@ -18,7 +18,7 @@ license: "CeCILL-B"
 homepage: "https://github.com/pveber/scirep/"
 bug-reports: "https://github.com/pveber/scirep/issues"
 depends: [
-  "dune" {>= "1.11"}
+  "dune" {>= "2.4"}
   "compiler-libs"
   "core_kernel"
   "ezxmlm"

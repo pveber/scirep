@@ -97,6 +97,14 @@ module Document = struct
 
   let is_img_line s =
     String.is_prefix s ~prefix:"<img" (* && String.is_suffix s ~suffix:"</img>" *)
+
+  let code_block_expansion f items =
+    let open Omd_representation in
+    List.concat_map items ~f:(function
+        | Code_block ("ocaml", contents) ->
+          f contents
+        | item -> [ item ]
+      )
 end
 
 let guess_title contents =
@@ -244,14 +252,6 @@ module Eval_mode() = struct
           Html ("pre", [], contents)
       )
 
-  let code_block_expansion items =
-    let open Omd_representation in
-    List.concat_map items ~f:(function
-        | Code_block ("ocaml", contents) ->
-          expand_code_block contents
-        | item -> [ item ]
-      )
-
   let main ~input_fn ~output_fn ~libs () =
     load_libs libs ;
     let markdown =
@@ -260,7 +260,7 @@ module Eval_mode() = struct
     in
     let html =
       markdown
-      |> code_block_expansion
+      |> Document.code_block_expansion expand_code_block
       |> Omd.to_html
     in
     let title = Option.value ~default:"" (guess_title markdown) in
@@ -278,7 +278,7 @@ end
 let eval_command =
   let open Command.Let_syntax in
   Command.basic
-    ~summary:"scirep"
+    ~summary:"eval"
     [%map_open
       let input_fn = anon ("input_file" %: string)
       and output_fn = anon ("output_file" %: string)
@@ -289,4 +289,66 @@ let eval_command =
       EM.main ~input_fn ~output_fn ~libs
     ]
 
-let () = Command.run eval_command
+module Md2html = struct
+  let expand_code_block contents =
+    let open Omd_representation in
+    let groups =
+      String.split contents ~on:'\n'
+      |> List.map ~f:Document.(fun s ->
+          if is_img_line s then Picture s
+          else Text s
+        )
+      |> Document.phrase_groups
+    in
+    List.map groups ~f:(function
+        | `Picture p -> Raw p
+        | `Text xs ->
+          let contents =
+            Raw (
+              String.concat ~sep:"\n" xs
+              |> Scirep.html_of_string
+            )
+          in
+          Html ("pre", [], [contents])
+      )
+
+  let main ~input_fn ~output_fn () =
+    let markdown =
+      In_channel.read_all input_fn
+      |> Omd.of_string
+    in
+    let html =
+      markdown
+      |> Document.code_block_expansion expand_code_block
+      |> Omd.to_html
+    in
+    let title = Option.value ~default:"" (guess_title markdown) in
+    let variables = [
+      "template_head_title", title ;
+      "template_body", html ;
+      "template_css", style_css ;
+    ]
+    in
+    let buf = Buffer.create 253 in
+    Caml.Buffer.add_substitute buf (apply_variables variables) template ;
+    Out_channel.write_all ~data:(Buffer.contents buf) output_fn
+
+end
+
+let md2html_command =
+  let open Command.Let_syntax in
+  Command.basic
+    ~summary:"md2html"
+    [%map_open
+      let input_fn = anon ("input_file" %: string)
+      and output_fn = anon ("output_file" %: string)
+      in
+      Md2html.main ~input_fn ~output_fn
+    ]
+
+let command = Command.group ~summary:"scirep" [
+    "eval", eval_command ;
+    "md2html", md2html_command ;
+  ]
+
+let () = Command.run command

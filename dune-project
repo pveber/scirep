@@ -1,5 +1,6 @@
-(lang dune 1.11)
+(lang dune 2.4)
 (generate_opam_files true)
+(using mdx 0.1)
 
 (name scirep)
 (source (github pveber/scirep))
