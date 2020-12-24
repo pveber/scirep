@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+
+    <title>List traversal with fold</title>
+
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+            onload='renderMathInElement(document.body, {delimiters:[{left: "$$", right: "$$", display: true},{left: "$", right: "$", display: false}]});'></script>
+    <link rel="stylesheet" href="https://unpkg.com/marx-css/css/marx.min.css">
+    <style>
+      pre { line-height: 135%; font-size:90% }
+blockquote pre { margin-top: 10px }  /* better styling for quoted code pieces */
+code, .gutter pre {
+  font-family: "Droid Sans Mono", Consolas, monospace;
+}
+code { font-size: 100%; }
+h1 code, h2 code, h3 code, h4 code, h5 code, h5 code { font-size: 80%; }
+.governing, .ocaml .ot { color: black; font-weight: bold; }
+.keyword, .ocaml .kw, .ocaml .k, .planet .Keyword { color: #575bf4 }
+.keywordsign { color: #886643; }
+.constructor, .ocaml .dt, .ocaml .nc {
+  color: #829f1c;
+  font-weight: normal;
+}
+
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <h1 id="List-traversal-with-fold">List traversal with fold</h1>
+
+<p>The first and foremost feature of a functional language is that
+variables can&#39;t be modified (they are said to be <em>immutable</em>). A
+direct implication of this is that <code>for</code> and <code>while</code> loops become
+useless: since iterations can&#39;t modify variables, they are doomed to
+reproduce the same calculation each time. In functional programming,
+loops are replaced by <em>recursive functions</em> to perform iterative
+calculations. Let us start with an example.</p>
+<h2 id="Sum-of-integers">Sum of integers</h2>
+
+<p>Suppose we&#39;d like to compute the sum of $n$ integers
+$x_1,\dots,x_n$. A simple recursive formulation for this is to say
+that we can compute the sum of the first $n-1$ integers and add the
+last one to the result. In more formal terms:</p>
+<p>$$
+\begin{aligned}
+S_n &amp; = &amp; \sum_{i=1}^{n} x_i\\
+&amp; = &amp; \sum_{i=1}^{n - 1} x_i + x_n\\
+&amp; = &amp; S_{n-1} + x_n
+\end{aligned}
+$$</p>
+<p>This formulation can be translated <em>verbatim</em> in OCaml:</p>
+<pre>
+<span class='governing'>let</span> <span class='governing'>rec</span> <span class='lower'>sum</span> <span class='lower'>xs</span> <span class='keywordsign'>=</span> <span class='keyword'>match</span> <span class='lower'>xs</span> <span class='keyword'>with</span>
+  <span class='keywordsign'>|</span> <span class='keywordsign operator'>[]</span> <span class='keywordsign'>-&#62;</span> <span class='number'>0</span>
+  <span class='keywordsign'>|</span> <span class='lower'>h</span> <span class='keywordsign'>::</span> <span class='lower'>t</span> <span class='keywordsign'>-&#62;</span> <span class='lower'>h</span> <span class='keywordsign'>+</span> <span class='lower'>sum</span> <span class='lower'>t</span>
+<span class='keywordsign'>;;</span>
+<span style="color:darkgrey">val sum : int list -&gt; int = &lt;fun&gt;
+</span></pre><p>If the list is empty, we return the neutral element for the addition
+(<em>i.e.</em> 0) and if it has at least one element we add it to the sum of
+the remaining elements.</p>
+<h2 id="Products-of-integers">Products of integers</h2>
+
+<p>Let&#39;s now write a function that computes the <em>product</em> of the integers
+in a list. We can employ a very similar recursive formulation:</p>
+<pre>
+<span class='governing'>let</span> <span class='governing'>rec</span> <span class='lower'>product</span> <span class='lower'>xs</span> <span class='keywordsign'>=</span> <span class='keyword'>match</span> <span class='lower'>xs</span> <span class='keyword'>with</span>
+  <span class='keywordsign'>|</span> <span class='keywordsign operator'>[]</span> <span class='keywordsign'>-&#62;</span> <span class='number'>1</span>
+  <span class='keywordsign'>|</span> <span class='lower'>h</span> <span class='keywordsign'>::</span> <span class='lower'>t</span> <span class='keywordsign'>-&#62;</span> <span class='lower'>h</span> <span class='keywordsign'>*</span> <span class='lower'>product</span> <span class='lower'>t</span>
+<span class='keywordsign'>;;</span>
+<span style="color:darkgrey">val product : int list -&gt; int = &lt;fun&gt;
+</span></pre><p>Two things have changed:</p>
+<ul><li>the empty list case now returns the neutral element for the
+ product, <em>i.e.</em> 1</li><li>the way the head of the list <code>h</code> is combined to the result of
+ the recursive call. We now use the product operator <code>( * )</code>.</li></ul>
+
+<h2 id="Concatenation-of-strings">Concatenation of strings</h2>
+
+<p>Interestingly, the function that concatenates all strings from a list
+is absolutely similar:</p>
+<pre>
+<span class='governing'>let</span> <span class='governing'>rec</span> <span class='lower'>concat</span> <span class='lower'>xs</span> <span class='keywordsign'>=</span> <span class='keyword'>match</span> <span class='lower'>xs</span> <span class='keyword'>with</span>
+  <span class='keywordsign'>|</span> <span class='keywordsign operator'>[]</span> <span class='keywordsign'>-&#62;</span> <span class='string'>&#34;&#34;</span>
+  <span class='keywordsign'>|</span> <span class='lower'>h</span> <span class='keywordsign'>::</span> <span class='lower'>t</span> <span class='keywordsign'>-&#62;</span> <span class='lower'>h</span> <span class='keywordsign infix'>^</span> <span class='lower'>concat</span> <span class='lower'>t</span>
+<span class='keywordsign'>;;</span>
+<span style="color:darkgrey">val concat : string list -&gt; string = &lt;fun&gt;
+</span></pre><p>Now the neutral element is an empty string and the head of the list is
+combined to the result of the recursive call using the append operator
+for strings <code>( ^ )</code>.</p>
+<h2 id="One-function-to-write-them-all">One function to write them all</h2>
+
+<p>Since those three functions are so similar, we can in fact see them as
+particular instances of a more general function, usually named
+<code>fold</code>. We have seen that what differs between two functions is a
+binary operation and its associated neutral element. Let&#39;s set them as
+<em>parameters</em>:</p>
+<pre>
+<span class='governing'>let</span> <span class='governing'>rec</span> <span class='lower'>fold</span> <span class='lower'>f</span> <span class='lower'>e</span> <span class='lower'>xs</span> <span class='keywordsign'>=</span> <span class='keyword'>match</span> <span class='lower'>xs</span> <span class='keyword'>with</span>
+  <span class='keywordsign'>|</span> <span class='keywordsign operator'>[]</span> <span class='keywordsign'>-&#62;</span> <span class='lower'>e</span>
+  <span class='keywordsign'>|</span> <span class='lower'>h</span> <span class='keywordsign'>::</span> <span class='lower'>t</span> <span class='keywordsign'>-&#62;</span> <span class='lower'>f</span> <span class='lower'>h</span> <span class='keywordsign'>(</span><span class='lower'>fold</span> <span class='lower'>f</span> <span class='lower'>e</span> <span class='lower'>t</span><span class='keywordsign'>)</span>
+<span class='keywordsign'>;;</span>
+<span style="color:darkgrey">val fold : (&apos;a -&gt; &apos;b -&gt; &apos;b) -&gt; &apos;b -&gt; &apos;a list -&gt; &apos;b = &lt;fun&gt;
+</span></pre><p>The type is now more complex, and displays <em>type variables</em>, which
+express <em>typing constraints</em> between the arguments of <code>fold</code>. Let&#39;s
+consider them from right to left:</p>
+<ul><li>the third argument is of type <code>&#39;a list</code>, meaning we&#39;re going to
+ process a list of values of type <code>&#39;a</code> (in our case, <code>&#39;a</code> was first
+ <code>int</code> then <code>string</code>).</li><li>the second argument is an <em>initial value</em> of type <code>&#39;b</code> (in our
+ case it was successively <code>0</code>, <code>1</code> and <code>&quot;&quot;</code>).</li><li>the first argument is a function to <em>combine</em> elements of the
+ lists (e.g. integers) with the result we are computing
+ (e.g. sum).</li></ul>
+
+<p>Our three functions can now be rewritten in the following way:</p>
+<pre>
+<span class='governing'>let</span> <span class='lower'>sum</span> <span class='lower'>xs</span> <span class='keywordsign'>=</span> <span class='lower'>fold</span> <span class='keywordsign'>(</span> <span class='keywordsign'>+</span> <span class='keywordsign'>)</span> <span class='number'>0</span> <span class='lower'>xs</span><span class='keywordsign'>;;</span>
+<span style="color:darkgrey">val sum : int list -&gt; int = &lt;fun&gt;
+</span>
+<span class='governing'>let</span> <span class='lower'>prod</span> <span class='lower'>xs</span> <span class='keywordsign'>=</span> <span class='lower'>fold</span> <span class='keywordsign'>(</span> <span class='keywordsign'>*</span> <span class='keywordsign'>)</span> <span class='number'>1</span> <span class='lower'>xs</span><span class='keywordsign'>;;</span>
+<span style="color:darkgrey">val prod : int list -&gt; int = &lt;fun&gt;
+</span>
+<span class='governing'>let</span> <span class='lower'>concat</span> <span class='lower'>xs</span> <span class='keywordsign'>=</span> <span class='lower'>fold</span> <span class='keywordsign'>(</span> <span class='keywordsign infix'>^</span> <span class='keywordsign'>)</span> <span class='string'>&#34;&#34;</span> <span class='lower'>xs</span><span class='keywordsign'>;;</span>
+<span style="color:darkgrey">val concat : string list -&gt; string = &lt;fun&gt;
+</span></pre><p>That is, once <code>fold</code> is available, their implementation becomes very
+concise, which lets significantly less opportunities to make mistakes!</p>
+<h2 id="Conclusion">Conclusion</h2>
+
+<p><code>fold</code> is basically a general way to perform an <em>iterative
+computation</em>, like we would do with a loop: we put an initial value in
+a accumulator variable, then we consider successively the elements of
+the list by updating the variable with its previous value combined
+with the next element in the list. It is then <em>as expressive</em> as a
+loop, but <em>a lot safer</em>, since we don&#39;t need to take care of the loop
+nor handle the accumulator variable correctly.</p>
+<p>Note that there are two &quot;natural&quot; ways to iterate over a list (from
+left to right, or from right to left), and that is why the standard
+library offers two functions, <code>List.fold_left</code> and
+<code>List.fold_right</code>. As an exercice, try to figure out which one it is
+that we wrote (beware, there&#39;s a trap).</p>
+<p>Since a <code>fold</code> function is a way to iterate over a collection, we
+could write some for other collections like trees, graphs, sets, hash
+tables and so on. But that&#39;s yet another story.</p>
+<p>P.S. A call to <code>fold</code> is hidden in this messy code. Will you find it?</p>
+<pre>
+<span class='governing'>open</span> <span class='constructor module'>Gg</span><span class='keywordsign'>;;</span>
+<span style="color:darkgrey"></span>
+<span class='governing'>open</span> <span class='constructor module'>Vg</span><span class='keywordsign'>;;</span>
+<span style="color:darkgrey"></span>
+<span class='governing'>let</span> <span class='lower'>cut_outline</span> <span class='lower'>path</span> <span class='lower'>img</span> <span class='keywordsign'>=</span>
+  <span class='governing'>let</span> <span class='lower'>area</span> <span class='keywordsign'>=</span> <span class='keywordsign'>`</span><span class='constructor module'>O</span> <span class='keywordsign'>{</span> <span class='constructor module'>P</span><span class='keywordsign'>.</span><span class='lower'>o</span> <span class='keyword'>with</span> <span class='constructor module'>P</span><span class='keywordsign'>.</span><span class='lower'>width</span> <span class='keywordsign'>=</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>001</span> <span class='keywordsign'>}</span> <span class='governing'>in</span>
+  <span class='constructor module'>I</span><span class='keywordsign'>.</span><span class='lower'>cut</span> <span class='keywordsign'>~</span><span class='lower'>area</span> <span class='lower'>path</span> <span class='lower'>img</span>
+<span class='keywordsign'>;;</span>
+<span style="color:darkgrey">val cut_outline : Vg.path -&gt; Vg.image -&gt; Vg.image = &lt;fun&gt;
+</span>
+<span class='governing'>let</span> <span class='lower'>quadrilateral</span> <span class='lower'>a</span> <span class='lower'>b</span> <span class='lower'>c</span> <span class='lower'>d</span> <span class='lower'>p</span> <span class='keywordsign'>=</span>
+  <span class='lower'>p</span> <span class='keywordsign infix'>|&#62;</span>
+  <span class='constructor module'>P</span><span class='keywordsign'>.</span><span class='lower'>sub</span> <span class='lower'>a</span> <span class='keywordsign infix'>|&#62;</span>
+    <span class='constructor module'>P</span><span class='keywordsign'>.</span><span class='lower'>line</span> <span class='lower'>b</span> <span class='keywordsign infix'>|&#62;</span>
+    <span class='constructor module'>P</span><span class='keywordsign'>.</span><span class='lower'>line</span> <span class='lower'>c</span> <span class='keywordsign infix'>|&#62;</span>
+    <span class='constructor module'>P</span><span class='keywordsign'>.</span><span class='lower'>line</span> <span class='lower'>d</span> <span class='keywordsign infix'>|&#62;</span>
+    <span class='constructor module'>P</span><span class='keywordsign'>.</span><span class='lower'>close</span>
+<span class='keywordsign'>;;</span>
+<span style="color:darkgrey">val quadrilateral : Gg.p2 -&gt; Gg.p2 -&gt; Gg.p2 -&gt; Gg.p2 -&gt; Vg.path -&gt; Vg.path =
+  &lt;fun&gt;
+</span>
+<span class='governing'>let</span> <span class='lower'>nested_squares_path</span> <span class='lower'>n</span> <span class='keywordsign'>=</span>
+  <span class='governing'>let</span> <span class='lower'>init</span> <span class='keywordsign'>=</span>
+    <span class='keywordsign'>(</span>
+      <span class='constructor module'>V2</span><span class='keywordsign'>.</span><span class='lower'>v</span> <span class='keywordsign'>(</span><span class='keywordsign'>-.</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>5</span><span class='keywordsign'>)</span> <span class='keywordsign'>(</span><span class='keywordsign'>-.</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>5</span><span class='keywordsign'>)</span><span class='keywordsign'>,</span>
+      <span class='constructor module'>V2</span><span class='keywordsign'>.</span><span class='lower'>v</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>5</span> <span class='keywordsign'>(</span><span class='keywordsign'>-.</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>5</span><span class='keywordsign'>)</span><span class='keywordsign'>,</span>
+      <span class='constructor module'>V2</span><span class='keywordsign'>.</span><span class='lower'>v</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>5</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>5</span><span class='keywordsign'>,</span>
+      <span class='constructor module'>V2</span><span class='keywordsign'>.</span><span class='lower'>v</span> <span class='keywordsign'>(</span><span class='keywordsign'>-.</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>5</span><span class='keywordsign'>)</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>5</span>
+    <span class='keywordsign'>)</span>
+  <span class='governing'>in</span>
+  <span class='governing'>let</span> <span class='lower'>f</span> <span class='keywordsign'>_</span> <span class='keywordsign'>(</span><span class='lower'>accu</span><span class='keywordsign'>,</span> <span class='keywordsign'>(</span><span class='lower'>a</span><span class='keywordsign'>,</span> <span class='lower'>b</span><span class='keywordsign'>,</span> <span class='lower'>c</span><span class='keywordsign'>,</span> <span class='lower'>d</span><span class='keywordsign'>)</span><span class='keywordsign'>)</span> <span class='keywordsign'>=</span>
+    <span class='governing'>let</span> <span class='lower'>a&#39;</span> <span class='keywordsign'>=</span> <span class='constructor module'>V2</span><span class='keywordsign'>.</span><span class='keywordsign'>(</span> <span class='lower'>a</span> <span class='keywordsign'>+</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>1</span> <span class='keywordsign'>*</span> <span class='keywordsign'>(</span><span class='lower'>d</span> <span class='keywordsign'>-</span> <span class='lower'>a</span><span class='keywordsign'>)</span> <span class='keywordsign'>)</span> <span class='governing'>in</span>
+    <span class='governing'>let</span> <span class='lower'>b&#39;</span> <span class='keywordsign'>=</span> <span class='constructor module'>V2</span><span class='keywordsign'>.</span><span class='keywordsign'>(</span> <span class='lower'>b</span> <span class='keywordsign'>+</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>1</span> <span class='keywordsign'>*</span> <span class='keywordsign'>(</span><span class='lower'>a</span> <span class='keywordsign'>-</span> <span class='lower'>b</span><span class='keywordsign'>)</span> <span class='keywordsign'>)</span> <span class='governing'>in</span>
+    <span class='governing'>let</span> <span class='lower'>c&#39;</span> <span class='keywordsign'>=</span> <span class='constructor module'>V2</span><span class='keywordsign'>.</span><span class='keywordsign'>(</span> <span class='lower'>c</span> <span class='keywordsign'>+</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>1</span> <span class='keywordsign'>*</span> <span class='keywordsign'>(</span><span class='lower'>b</span> <span class='keywordsign'>-</span> <span class='lower'>c</span><span class='keywordsign'>)</span> <span class='keywordsign'>)</span> <span class='governing'>in</span>
+    <span class='governing'>let</span> <span class='lower'>d&#39;</span> <span class='keywordsign'>=</span> <span class='constructor module'>V2</span><span class='keywordsign'>.</span><span class='keywordsign'>(</span> <span class='lower'>d</span> <span class='keywordsign'>+</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>1</span> <span class='keywordsign'>*</span> <span class='keywordsign'>(</span><span class='lower'>c</span> <span class='keywordsign'>-</span> <span class='lower'>d</span><span class='keywordsign'>)</span> <span class='keywordsign'>)</span> <span class='governing'>in</span>
+    <span class='keywordsign'>(</span><span class='lower'>accu</span> <span class='keywordsign infix'>|&#62;</span> <span class='lower'>quadrilateral</span> <span class='lower'>a&#39;</span> <span class='lower'>b&#39;</span> <span class='lower'>c&#39;</span> <span class='lower'>d&#39;</span><span class='keywordsign'>,</span>
+     <span class='keywordsign'>(</span><span class='lower'>a&#39;</span><span class='keywordsign'>,</span> <span class='lower'>b&#39;</span><span class='keywordsign'>,</span> <span class='lower'>c&#39;</span><span class='keywordsign'>,</span> <span class='lower'>d&#39;</span><span class='keywordsign'>)</span><span class='keywordsign'>)</span>
+  <span class='governing'>in</span>    
+  <span class='constructor module'>List</span><span class='keywordsign'>.</span><span class='lower'>init</span> <span class='number'>100</span> <span class='keywordsign'>(</span><span class='keyword'>fun</span> <span class='lower'>x</span> <span class='keywordsign'>-&#62;</span> <span class='lower'>x</span><span class='keywordsign'>)</span>
+  <span class='keywordsign infix'>|&#62;</span> <span class='lower'>fold</span> <span class='lower'>f</span> <span class='keywordsign'>(</span><span class='constructor module'>P</span><span class='keywordsign'>.</span><span class='lower'>empty</span><span class='keywordsign'>,</span> <span class='lower'>init</span><span class='keywordsign'>)</span>
+  <span class='keywordsign infix'>|&#62;</span> <span class='lower'>fst</span>
+<span class='keywordsign'>;;</span>
+<span style="color:darkgrey">val nested_squares_path : &apos;a -&gt; Vg.path = &lt;fun&gt;
+</span>
+<span class='governing'>let</span> <span class='lower'>nested_squares</span> <span class='keywordsign'>=</span>
+  <span class='lower'>cut_outline</span> <span class='keywordsign'>(</span><span class='lower'>nested_squares_path</span> <span class='number'>100</span><span class='keywordsign'>)</span> <span class='keywordsign'>(</span><span class='constructor module'>I</span><span class='keywordsign'>.</span><span class='lower'>const</span> <span class='constructor module'>Color</span><span class='keywordsign'>.</span><span class='lower'>black</span><span class='keywordsign'>)</span>
+  <span class='keywordsign infix'>|&#62;</span> <span class='constructor module'>I</span><span class='keywordsign'>.</span><span class='lower'>move</span> <span class='keywordsign'>(</span><span class='constructor module'>V2</span><span class='keywordsign'>.</span><span class='lower'>v</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>5</span> <span class='number'>0</span><span class='keywordsign'>.</span><span class='number'>5</span><span class='keywordsign'>)</span>
+<span class='keywordsign'>;;</span>
+<span style="color:darkgrey">val nested_squares : Vg.image = &lt;abstr&gt;
+</span>
+<span class='constructor module'>Scirep</span><span class='keywordsign'>.</span><span class='constructor module'>Show</span><span class='keywordsign'>.</span><span class='lower'>vg</span> <span class='lower'>nested_squares</span><span class='keywordsign'>;;</span>
+</pre><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2ZXJzaW9uPSIxLjEiIHdpZHRoPSIxMDBtbSIgaGVpZ2h0PSIxMDBtbSIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGNvbG9yLXByb2ZpbGU9ImF1dG8iIGNvbG9yLWludGVycG9sYXRpb249ImxpbmVhclJHQiIgY29sb3ItaW50ZXJwb2xhdGlvbi1maWx0ZXJzPSJsaW5lYXJSR0IiPjxnIGZpbGw9Im5vbmUiIHN0cm9rZS1taXRlcmxpbWl0PSI5Ljk4MTIzIiB0cmFuc2Zvcm09Im1hdHJpeCgxMDAgMCAwIC0xMDAgLTAgMTAwKSI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMC41IDAuNSkiPjxkZWZzPjxwYXRoIGlkPSJpMSIgZD0iTS0wLjUgLTAuNEwwLjQgLTAuNUwwLjUgMC40TC0wLjQgMC41Wk0tMC40OSAtMC4zMUwwLjMxIC0wLjQ5TDAuNDkgMC4zMUwtMC4zMSAwLjQ5Wk0tMC40NzIgLTAuMjNMMC4yMyAtMC40NzJMMC40NzIgMC4yM0wtMC4yMyAwLjQ3MlpNLTAuNDQ3OCAtMC4xNTk4TDAuMTU5OCAtMC40NDc4TDAuNDQ3OCAwLjE1OThMLTAuMTU5OCAwLjQ0NzhaTS0wLjQxOSAtMC4wOTkwNEwwLjA5OTA0IC0wLjQxOUwwLjQxOSAwLjA5OTA0TC0wLjA5OTA0IDAuNDE5Wk0tMC4zODcwMDQgLTAuMDQ3MjM2TDAuMDQ3MjM2IC0wLjM4NzAwNEwwLjM4NzAwNCAwLjA0NzIzNkwtMC4wNDcyMzYgMC4zODcwMDRaTS0wLjM1MzAyNyAtMC4wMDM4MTJMMC4wMDM4MTIgLTAuMzUzMDI3TDAuMzUzMDI3IDAuMDAzODEyTC0wLjAwMzgxMiAwLjM1MzAyN1pNLTAuMzE4MTA2IDAuMDMxODcxOUwtMC4wMzE4NzE5IC0wLjMxODEwNkwwLjMxODEwNiAtMC4wMzE4NzE5TDAuMDMxODcxOSAwLjMxODEwNlpNLTAuMjgzMTA4IDAuMDYwNDk1M0wtMC4wNjA0OTUzIC0wLjI4MzEwOEwwLjI4MzEwOCAtMC4wNjA0OTUzTDAuMDYwNDk1MyAwLjI4MzEwOFpNLTAuMjQ4NzQ4IDAuMDgyNzU2NkwtMC4wODI3NTY2IC0wLjI0ODc0OEwwLjI0ODc0OCAtMC4wODI3NTY2TDAuMDgyNzU2NiAwLjI0ODc0OFpNLTAuMjE1NTk3IDAuMDk5MzU1N0wtMC4wOTkzNTU3IC0wLjIxNTU5N0wwLjIxNTU5NyAtMC4wOTkzNTU3TDAuMDk5MzU1NyAwLjIxNTU5N1pNLTAuMTg0MTAyIDAuMTEwOThMLTAuMTEwOTggLTAuMTg0MTAyTDAuMTg0MTAyIC0wLjExMDk4TDAuMTEwOTggMC4xODQxMDJaTS0wLjE1NDU5NCAwLjExODI5MkwtMC4xMTgyOTIgLTAuMTU0NTk0TDAuMTU0NTk0IC0wLjExODI5MkwwLjExODI5MiAwLjE1NDU5NFpNLTAuMTI3MzA1IDAuMTIxOTIyTC0wLjEyMTkyMiAtMC4xMjczMDVMMC4xMjczMDUgLTAuMTIxOTIyTDAuMTIxOTIyIDAuMTI3MzA1Wk0tMC4xMDIzODIgMC4xMjI0NkwtMC4xMjI0NiAtMC4xMDIzODJMMC4xMDIzODIgLTAuMTIyNDZMMC4xMjI0NiAwLjEwMjM4MlpNLTAuMDc5ODk4MSAwLjEyMDQ1M0wtMC4xMjA0NTMgLTAuMDc5ODk4MUwwLjA3OTg5ODEgLTAuMTIwNDUzTDAuMTIwNDUzIDAuMDc5ODk4MVpNLTAuMDU5ODYzIDAuMTE2Mzk3TC0wLjExNjM5NyAtMC4wNTk4NjNMMC4wNTk4NjMgLTAuMTE2Mzk3TDAuMTE2Mzk3IDAuMDU5ODYzWk0tMC4wNDIyMzcgMC4xMTA3NDRMLTAuMTEwNzQ0IC0wLjA0MjIzN0wwLjA0MjIzNyAtMC4xMTA3NDRMMC4xMTA3NDQgMC4wNDIyMzdaTS0wLjAyNjkzODkgMC4xMDM4OTNMLTAuMTAzODkzIC0wLjAyNjkzODlMMC4wMjY5Mzg5IC0wLjEwMzg5M0wwLjEwMzg5MyAwLjAyNjkzODlaTS0wLjAxMzg1NTcgMC4wOTYxOTc3TC0wLjA5NjE5NzcgLTAuMDEzODU1N0wwLjAxMzg1NTcgLTAuMDk2MTk3N0wwLjA5NjE5NzcgMC4wMTM4NTU3Wk0tMC4wMDI4NTAzOSAwLjA4Nzk2MzVMLTAuMDg3OTYzNSAtMC4wMDI4NTAzOUwwLjAwMjg1MDM5IC0wLjA4Nzk2MzVMMC4wODc5NjM1IDAuMDAyODUwMzlaTTAuMDA2MjMxIDAuMDc5NDUyMkwtMC4wNzk0NTIyIDAuMDA2MjMxTC0wLjAwNjIzMSAtMC4wNzk0NTIyTDAuMDc5NDUyMiAtMC4wMDYyMzFaTTAuMDEzNTUzMSAwLjA3MDg4MzlMLTAuMDcwODgzOSAwLjAxMzU1MzFMLTAuMDEzNTUzMSAtMC4wNzA4ODM5TDAuMDcwODgzOSAtMC4wMTM1NTMxWk0wLjAxOTI4NjIgMC4wNjI0NDAyTC0wLjA2MjQ0MDIgMC4wMTkyODYyTC0wLjAxOTI4NjIgLTAuMDYyNDQwMkwwLjA2MjQ0MDIgLTAuMDE5Mjg2MlpNMC4wMjM2MDE2IDAuMDU0MjY3NUwtMC4wNTQyNjc1IDAuMDIzNjAxNkwtMC4wMjM2MDE2IC0wLjA1NDI2NzVMMC4wNTQyNjc1IC0wLjAyMzYwMTZaTTAuMDI2NjY4MiAwLjA0NjQ4MDZMLTAuMDQ2NDgwNiAwLjAyNjY2ODJMLTAuMDI2NjY4MiAtMC4wNDY0ODA2TDAuMDQ2NDgwNiAtMC4wMjY2NjgyWk0wLjAyODY0OTQgMC4wMzkxNjU3TC0wLjAzOTE2NTcgMC4wMjg2NDk0TC0wLjAyODY0OTQgLTAuMDM5MTY1N0wwLjAzOTE2NTcgLTAuMDI4NjQ5NFpNMC4wMjk3MDExIDAuMDMyMzg0MkwtMC4wMzIzODQyIDAuMDI5NzAxMUwtMC4wMjk3MDExIC0wLjAzMjM4NDJMMC4wMzIzODQyIC0wLjAyOTcwMTFaTTAuMDI5OTY5NCAwLjAyNjE3NTdMLTAuMDI2MTc1NyAwLjAyOTk2OTRMLTAuMDI5OTY5NCAtMC4wMjYxNzU3TDAuMDI2MTc1NyAtMC4wMjk5Njk0Wk0wLjAyOTU5IDAuMDIwNTYxMkwtMC4wMjA1NjEyIDAuMDI5NTlMLTAuMDI5NTkgLTAuMDIwNTYxMkwwLjAyMDU2MTIgLTAuMDI5NTlaTTAuMDI4Njg3MSAwLjAxNTU0NjFMLTAuMDE1NTQ2MSAwLjAyODY4NzFMLTAuMDI4Njg3MSAtMC4wMTU1NDYxTDAuMDE1NTQ2MSAtMC4wMjg2ODcxWk0wLjAyNzM3MyAwLjAxMTEyMjdMLTAuMDExMTIyNyAwLjAyNzM3M0wtMC4wMjczNzMgLTAuMDExMTIyN0wwLjAxMTEyMjcgLTAuMDI3MzczWk0wLjAyNTc0OCAwLjAwNzI3MzE3TC0wLjAwNzI3MzE3IDAuMDI1NzQ4TC0wLjAyNTc0OCAtMC4wMDcyNzMxN0wwLjAwNzI3MzE3IC0wLjAyNTc0OFpNMC4wMjM5MDA1IDAuMDAzOTcxMDVMLTAuMDAzOTcxMDUgMC4wMjM5MDA1TC0wLjAyMzkwMDUgLTAuMDAzOTcxMDVMMC4wMDM5NzEwNSAtMC4wMjM5MDA1Wk0wLjAyMTkwNzYgMC4wMDExODM5TC0wLjAwMTE4MzkgMC4wMjE5MDc2TC0wLjAyMTkwNzYgLTAuMDAxMTgzOUwwLjAwMTE4MzkgLTAuMDIxOTA3NlpNMC4wMTk4MzUyIC0wLjAwMTEyNTI1TDAuMDAxMTI1MjUgMC4wMTk4MzUyTC0wLjAxOTgzNTIgMC4wMDExMjUyNUwtMC4wMDExMjUyNSAtMC4wMTk4MzUyWk0wLjAxNzczOTIgLTAuMDAyOTk2MjRMMC4wMDI5OTYyNCAwLjAxNzczOTJMLTAuMDE3NzM5MiAwLjAwMjk5NjI0TC0wLjAwMjk5NjI0IC0wLjAxNzczOTJaTTAuMDE1NjY1NiAtMC4wMDQ0NzA1NEwwLjAwNDQ3MDU0IDAuMDE1NjY1NkwtMC4wMTU2NjU2IDAuMDA0NDcwNTRMLTAuMDA0NDcwNTQgLTAuMDE1NjY1NlpNMC4wMTM2NTIgLTAuMDA1NTkwMDRMMC4wMDU1OTAwNCAwLjAxMzY1MkwtMC4wMTM2NTIgMC4wMDU1OTAwNEwtMC4wMDU1OTAwNCAtMC4wMTM2NTJaTTAuMDExNzI3OCAtMC4wMDYzOTYyNEwwLjAwNjM5NjI0IDAuMDExNzI3OEwtMC4wMTE3Mjc4IDAuMDA2Mzk2MjRMLTAuMDA2Mzk2MjQgLTAuMDExNzI3OFpNMC4wMDk5MTUzOSAtMC4wMDY5Mjk0TDAuMDA2OTI5NCAwLjAwOTkxNTM5TC0wLjAwOTkxNTM5IDAuMDA2OTI5NEwtMC4wMDY5Mjk0IC0wLjAwOTkxNTM5Wk0wLjAwODIzMDkxIC0wLjAwNzIyNzk5TDAuMDA3MjI3OTkgMC4wMDgyMzA5MUwtMC4wMDgyMzA5MSAwLjAwNzIyNzk5TC0wLjAwNzIyNzk5IC0wLjAwODIzMDkxWk0wLjAwNjY4NTAyIC0wLjAwNzMyODI5TDAuMDA3MzI4MjkgMC4wMDY2ODUwMkwtMC4wMDY2ODUwMiAwLjAwNzMyODI5TC0wLjAwNzMyODI5IC0wLjAwNjY4NTAyWk0wLjAwNTI4MzY5IC0wLjAwNzI2Mzk2TDAuMDA3MjYzOTYgMC4wMDUyODM2OUwtMC4wMDUyODM2OSAwLjAwNzI2Mzk2TC0wLjAwNzI2Mzk2IC0wLjAwNTI4MzY5Wk0wLjAwNDAyODkzIC0wLjAwNzA2NTkzTDAuMDA3MDY1OTMgMC4wMDQwMjg5M0wtMC4wMDQwMjg5MyAwLjAwNzA2NTkzTC0wLjAwNzA2NTkzIC0wLjAwNDAyODkzWk0wLjAwMjkxOTQ0IC0wLjAwNjc2MjIzTDAuMDA2NzYyMjMgMC4wMDI5MTk0NEwtMC4wMDI5MTk0NCAwLjAwNjc2MjIzTC0wLjAwNjc2MjIzIC0wLjAwMjkxOTQ0Wk0wLjAwMTk1MTI3IC0wLjAwNjM3Nzk1TDAuMDA2Mzc3OTUgMC4wMDE5NTEyN0wtMC4wMDE5NTEyNyAwLjAwNjM3Nzk1TC0wLjAwNjM3Nzk1IC0wLjAwMTk1MTI3Wk0wLjAwMTExODM1IC0wLjAwNTkzNTI5TDAuMDA1OTM1MjkgMC4wMDExMTgzNUwtMC4wMDExMTgzNSAwLjAwNTkzNTI5TC0wLjAwNTkzNTI5IC0wLjAwMTExODM1Wk0wLjAwMDQxMjk4NyAtMC4wMDU0NTM1OUwwLjAwNTQ1MzU5IDAuMDAwNDEyOTg3TC0wLjAwMDQxMjk4NyAwLjAwNTQ1MzU5TC0wLjAwNTQ1MzU5IC0wLjAwMDQxMjk4N1pNLTAuMDAwMTczNjcxIC0wLjAwNDk0OTUzTDAuMDA0OTQ5NTMgLTAuMDAwMTczNjcxTDAuMDAwMTczNjcxIDAuMDA0OTQ5NTNMLTAuMDA0OTQ5NTMgMC4wMDAxNzM2NzFaTS0wLjAwMDY1MTI1NyAtMC4wMDQ0MzcyMUwwLjAwNDQzNzIxIC0wLjAwMDY1MTI1N0wwLjAwMDY1MTI1NyAwLjAwNDQzNzIxTC0wLjAwNDQzNzIxIDAuMDAwNjUxMjU3Wk0tMC4wMDEwMjk4NSAtMC4wMDM5MjgzNkwwLjAwMzkyODM2IC0wLjAwMTAyOTg1TDAuMDAxMDI5ODUgMC4wMDM5MjgzNkwtMC4wMDM5MjgzNiAwLjAwMTAyOTg1Wk0tMC4wMDEzMTk3IC0wLjAwMzQzMjU0TDAuMDAzNDMyNTQgLTAuMDAxMzE5N0wwLjAwMTMxOTcgMC4wMDM0MzI1NEwtMC4wMDM0MzI1NCAwLjAwMTMxOTdaTS0wLjAwMTUzMDk5IC0wLjAwMjk1NzMyTDAuMDAyOTU3MzIgLTAuMDAxNTMwOTlMMC4wMDE1MzA5OSAwLjAwMjk1NzMyTC0wLjAwMjk1NzMyIDAuMDAxNTMwOTlaTS0wLjAwMTY3MzYyIC0wLjAwMjUwODQ5TDAuMDAyNTA4NDkgLTAuMDAxNjczNjJMMC4wMDE2NzM2MiAwLjAwMjUwODQ5TC0wLjAwMjUwODQ5IDAuMDAxNjczNjJaTS0wLjAwMTc1NzExIC0wLjAwMjA5MDI4TDAuMDAyMDkwMjggLTAuMDAxNzU3MTFMMC4wMDE3NTcxMSAwLjAwMjA5MDI4TC0wLjAwMjA5MDI4IDAuMDAxNzU3MTFaTS0wLjAwMTc5MDQyIC0wLjAwMTcwNTU0TDAuMDAxNzA1NTQgLTAuMDAxNzkwNDJMMC4wMDE3OTA0MiAwLjAwMTcwNTU0TC0wLjAwMTcwNTU0IDAuMDAxNzkwNDJaTS0wLjAwMTc4MTk0IC0wLjAwMTM1NTk0TDAuMDAxMzU1OTQgLTAuMDAxNzgxOTRMMC4wMDE3ODE5NCAwLjAwMTM1NTk0TC0wLjAwMTM1NTk0IDAuMDAxNzgxOTRaTS0wLjAwMTczOTM0IC0wLjAwMTA0MjE1TDAuMDAxMDQyMTUgLTAuMDAxNzM5MzRMMC4wMDE3MzkzNCAwLjAwMTA0MjE1TC0wLjAwMTA0MjE1IDAuMDAxNzM5MzRaTS0wLjAwMTY2OTYyIC0wLjAwMDc2NDAwNUwwLjAwMDc2NDAwNSAtMC4wMDE2Njk2MkwwLjAwMTY2OTYyIDAuMDAwNzY0MDA1TC0wLjAwMDc2NDAwNSAwLjAwMTY2OTYyWk0tMC4wMDE1NzkwNiAtMC4wMDA1MjA2NDNMMC4wMDA1MjA2NDMgLTAuMDAxNTc5MDZMMC4wMDE1NzkwNiAwLjAwMDUyMDY0M0wtMC4wMDA1MjA2NDMgMC4wMDE1NzkwNlpNLTAuMDAxNDczMjIgLTAuMDAwMzEwNjczTDAuMDAwMzEwNjczIC0wLjAwMTQ3MzIyTDAuMDAxNDczMjIgMC4wMDAzMTA2NzNMLTAuMDAwMzEwNjczIDAuMDAxNDczMjJaTS0wLjAwMTM1Njk2IC0wLjAwMDEzMjI4NEwwLjAwMDEzMjI4NCAtMC4wMDEzNTY5NkwwLjAwMTM1Njk2IDAuMDAwMTMyMjg0TC0wLjAwMDEzMjI4NCAwLjAwMTM1Njk2Wk0tMC4wMDEyMzQ0OSAxLjY2NDA0ZS0wNUwtMS42NjQwNGUtMDUgLTAuMDAxMjM0NDlMMC4wMDEyMzQ0OSAtMS42NjQwNGUtMDVMMS42NjQwNGUtMDUgMC4wMDEyMzQ0OVpNLTAuMDAxMTA5MzggMC4wMDAxMzg0MjZMLTAuMDAwMTM4NDI2IC0wLjAwMTEwOTM4TDAuMDAxMTA5MzggLTAuMDAwMTM4NDI2TDAuMDAwMTM4NDI2IDAuMDAxMTA5MzhaTS0wLjAwMDk4NDYgMC4wMDAyMzU1MjFMLTAuMDAwMjM1NTIxIC0wLjAwMDk4NDZMMC4wMDA5ODQ2IC0wLjAwMDIzNTUyMUwwLjAwMDIzNTUyMSAwLjAwMDk4NDZaTS0wLjAwMDg2MjU4OCAwLjAwMDMxMDQyOUwtMC4wMDAzMTA0MjkgLTAuMDAwODYyNTg4TDAuMDAwODYyNTg4IC0wLjAwMDMxMDQyOUwwLjAwMDMxMDQyOSAwLjAwMDg2MjU4OFpNLTAuMDAwNzQ1Mjg2IDAuMDAwMzY1NjQ1TC0wLjAwMDM2NTY0NSAtMC4wMDA3NDUyODZMMC4wMDA3NDUyODYgLTAuMDAwMzY1NjQ1TDAuMDAwMzY1NjQ1IDAuMDAwNzQ1Mjg2Wk0tMC4wMDA2MzQxOTMgMC4wMDA0MDM2MDlMLTAuMDAwNDAzNjA5IC0wLjAwMDYzNDE5M0wwLjAwMDYzNDE5MyAtMC4wMDA0MDM2MDlMMC4wMDA0MDM2MDkgMC4wMDA2MzQxOTNaTS0wLjAwMDUzMDQxMyAwLjAwMDQyNjY2N0wtMC4wMDA0MjY2NjcgLTAuMDAwNTMwNDEzTDAuMDAwNTMwNDEzIC0wLjAwMDQyNjY2N0wwLjAwMDQyNjY2NyAwLjAwMDUzMDQxM1pNLTAuMDAwNDM0NzA1IDAuMDAwNDM3MDQyTC0wLjAwMDQzNzA0MiAtMC4wMDA0MzQ3MDVMMC4wMDA0MzQ3MDUgLTAuMDAwNDM3MDQyTDAuMDAwNDM3MDQyIDAuMDAwNDM0NzA1Wk0tMC4wMDAzNDc1MyAwLjAwMDQzNjgwOEwtMC4wMDA0MzY4MDggLTAuMDAwMzQ3NTNMMC4wMDAzNDc1MyAtMC4wMDA0MzY4MDhMMC4wMDA0MzY4MDggMC4wMDAzNDc1M1pNLTAuMDAwMjY5MDk2IDAuMDAwNDI3ODhMLTAuMDAwNDI3ODggLTAuMDAwMjY5MDk2TDAuMDAwMjY5MDk2IC0wLjAwMDQyNzg4TDAuMDAwNDI3ODggMC4wMDAyNjkwOTZaTS0wLjAwMDE5OTM5OSAwLjAwMDQxMjAwMkwtMC4wMDA0MTIwMDIgLTAuMDAwMTk5Mzk5TDAuMDAwMTk5Mzk5IC0wLjAwMDQxMjAwMkwwLjAwMDQxMjAwMiAwLjAwMDE5OTM5OVpNLTAuMDAwMTM4MjU4IDAuMDAwMzkwNzQyTC0wLjAwMDM5MDc0MiAtMC4wMDAxMzgyNThMMC4wMDAxMzgyNTggLTAuMDAwMzkwNzQyTDAuMDAwMzkwNzQyIDAuMDAwMTM4MjU4Wk0tOC41MzU4NWUtMDUgMC4wMDAzNjU0OTNMLTAuMDAwMzY1NDkzIC04LjUzNTg1ZS0wNUw4LjUzNTg1ZS0wNSAtMC4wMDAzNjU0OTNMMC4wMDAzNjU0OTMgOC41MzU4NWUtMDVaTS00LjAyNzMzZS0wNSAwLjAwMDMzNzQ4TC0wLjAwMDMzNzQ4IC00LjAyNzMzZS0wNUw0LjAyNzMzZS0wNSAtMC4wMDAzMzc0OEwwLjAwMDMzNzQ4IDQuMDI3MzNlLTA1Wk0tMi40OThlLTA2IDAuMDAwMzA3NzU5TC0wLjAwMDMwNzc1OSAtMi40OThlLTA2TDIuNDk4ZS0wNiAtMC4wMDAzMDc3NTlMMC4wMDAzMDc3NTkgMi40OThlLTA2Wk0yLjg1Mjc3ZS0wNSAwLjAwMDI3NzIzM0wtMC4wMDAyNzcyMzMgMi44NTI3N2UtMDVMLTIuODUyNzdlLTA1IC0wLjAwMDI3NzIzM0wwLjAwMDI3NzIzMyAtMi44NTI3N2UtMDVaTTUuMzM5ODJlLTA1IDAuMDAwMjQ2NjU3TC0wLjAwMDI0NjY1NyA1LjMzOTgyZS0wNUwtNS4zMzk4MmUtMDUgLTAuMDAwMjQ2NjU3TDAuMDAwMjQ2NjU3IC01LjMzOTgyZS0wNVpNNy4yNzI0MWUtMDUgMC4wMDAyMTY2NTFMLTAuMDAwMjE2NjUxIDcuMjcyNDFlLTA1TC03LjI3MjQxZS0wNSAtMC4wMDAyMTY2NTFMMC4wMDAyMTY2NTEgLTcuMjcyNDFlLTA1Wk04LjcxMTY4ZS0wNSAwLjAwMDE4NzcxNEwtMC4wMDAxODc3MTQgOC43MTE2OGUtMDVMLTguNzExNjhlLTA1IC0wLjAwMDE4NzcxNEwwLjAwMDE4NzcxNCAtOC43MTE2OGUtMDVaTTkuNzE3NjVlLTA1IDAuMDAwMTYwMjMxTC0wLjAwMDE2MDIzMSA5LjcxNzY1ZS0wNUwtOS43MTc2NWUtMDUgLTAuMDAwMTYwMjMxTDAuMDAwMTYwMjMxIC05LjcxNzY1ZS0wNVpNMC4wMDAxMDM0ODIgMC4wMDAxMzQ0OUwtMC4wMDAxMzQ0OSAwLjAwMDEwMzQ4MkwtMC4wMDAxMDM0ODIgLTAuMDAwMTM0NDlMMC4wMDAxMzQ0OSAtMC4wMDAxMDM0ODJaTTAuMDAwMTA2NTgzIDAuMDAwMTEwNjkzTC0wLjAwMDExMDY5MyAwLjAwMDEwNjU4M0wtMC4wMDAxMDY1ODMgLTAuMDAwMTEwNjkzTDAuMDAwMTEwNjkzIC0wLjAwMDEwNjU4M1pNMC4wMDAxMDY5OTQgOC44OTY1M2UtMDVMLTguODk2NTNlLTA1IDAuMDAwMTA2OTk0TC0wLjAwMDEwNjk5NCAtOC44OTY1M2UtMDVMOC44OTY1M2UtMDUgLTAuMDAwMTA2OTk0Wk0wLjAwMDEwNTE5MSA2LjkzNjk0ZS0wNUwtNi45MzY5NGUtMDUgMC4wMDAxMDUxOTFMLTAuMDAwMTA1MTkxIC02LjkzNjk0ZS0wNUw2LjkzNjk0ZS0wNSAtMC4wMDAxMDUxOTFaTTAuMDAwMTAxNjA5IDUuMTkxMzRlLTA1TC01LjE5MTM0ZS0wNSAwLjAwMDEwMTYwOUwtMC4wMDAxMDE2MDkgLTUuMTkxMzRlLTA1TDUuMTkxMzRlLTA1IC0wLjAwMDEwMTYwOVpNOS42NjM5MmUtMDUgMy42NTYxMWUtMDVMLTMuNjU2MTFlLTA1IDkuNjYzOTJlLTA1TC05LjY2MzkyZS0wNSAtMy42NTYxMWUtMDVMMy42NTYxMWUtMDUgLTkuNjYzOTJlLTA1Wk05LjA2MzE0ZS0wNSAyLjMyNDExZS0wNUwtMi4zMjQxMWUtMDUgOS4wNjMxNGUtMDVMLTkuMDYzMTRlLTA1IC0yLjMyNDExZS0wNUwyLjMyNDExZS0wNSAtOS4wNjMxNGUtMDVaTTguMzg5MjRlLTA1IDEuMTg1MzhlLTA1TC0xLjE4NTM4ZS0wNSA4LjM4OTI0ZS0wNUwtOC4zODkyNGUtMDUgLTEuMTg1MzhlLTA1TDEuMTg1MzhlLTA1IC04LjM4OTI0ZS0wNVpNNy42Njg4NWUtMDUgMi4yNzkyMmUtMDZMLTIuMjc5MjJlLTA2IDcuNjY4ODVlLTA1TC03LjY2ODg1ZS0wNSAtMi4yNzkyMmUtMDZMMi4yNzkyMmUtMDYgLTcuNjY4ODVlLTA1Wk02LjkyNDc2ZS0wNSAtNS42MTc1NWUtMDZMNS42MTc1NWUtMDYgNi45MjQ3NmUtMDVMLTYuOTI0NzZlLTA1IDUuNjE3NTVlLTA2TC01LjYxNzU1ZS0wNiAtNi45MjQ3NmUtMDVaTTYuMTc2MTFlLTA1IC0xLjE5ODA2ZS0wNUwxLjE5ODA2ZS0wNSA2LjE3NjExZS0wNUwtNi4xNzYxMWUtMDUgMS4xOTgwNmUtMDVMLTEuMTk4MDZlLTA1IC02LjE3NjExZS0wNVpNNS40Mzg2OWUtMDUgLTEuNjk1ODZlLTA1TDEuNjk1ODZlLTA1IDUuNDM4NjllLTA1TC01LjQzODY5ZS0wNSAxLjY5NTg2ZS0wNUwtMS42OTU4NmUtMDUgLTUuNDM4NjllLTA1Wk00LjcyNTI0ZS0wNSAtMi4wNzAxNGUtMDVMMi4wNzAxNGUtMDUgNC43MjUyNGUtMDVMLTQuNzI1MjRlLTA1IDIuMDcwMTRlLTA1TC0yLjA3MDE0ZS0wNSAtNC43MjUyNGUtMDVaTTQuMDQ1N2UtMDUgLTIuMzM1NjVlLTA1TDIuMzM1NjVlLTA1IDQuMDQ1N2UtMDVMLTQuMDQ1N2UtMDUgMi4zMzU2NWUtMDVMLTIuMzM1NjVlLTA1IC00LjA0NTdlLTA1Wk0zLjQwNzU2ZS0wNSAtMi41MDY2NmUtMDVMMi41MDY2NmUtMDUgMy40MDc1NmUtMDVMLTMuNDA3NTZlLTA1IDIuNTA2NjZlLTA1TC0yLjUwNjY2ZS0wNSAtMy40MDc1NmUtMDVaTTIuODE2MTRlLTA1IC0yLjU5Njc1ZS0wNUwyLjU5Njc1ZS0wNSAyLjgxNjE0ZS0wNUwtMi44MTYxNGUtMDUgMi41OTY3NWUtMDVMLTIuNTk2NzVlLTA1IC0yLjgxNjE0ZS0wNVpNMi4yNzQ4NWUtMDUgLTIuNjE4NjllLTA1TDIuNjE4NjllLTA1IDIuMjc0ODVlLTA1TC0yLjI3NDg1ZS0wNSAyLjYxODY5ZS0wNUwtMi42MTg2OWUtMDUgLTIuMjc0ODVlLTA1WiIvPjwvZGVmcz48dXNlIHhsaW5rOmhyZWY9IiNpMSIgc3Ryb2tlLXdpZHRoPSIwLjAwMSIgc3Ryb2tlPSIjMDAwMDAwIi8+PC9nPjwvZz48L3N2Zz4="></img><pre>
+<span style="color:darkgrey">- : unit = ()
+</span></pre>
+    </main>
+  </body>
+</html>
