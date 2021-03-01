@@ -12,3 +12,6 @@ deriving.html: deriving.md
 
 mdx_example.html: mdx_example.md
 	scirep md2html $< $@
+
+lines.html: lines.md
+	scirep eval --libs streaming $< $@
