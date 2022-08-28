@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 
 let render_vg image =
   let open Gg in

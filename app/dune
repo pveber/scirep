@@ -7,6 +7,7 @@
   (libraries
     compiler-libs.toplevel
     core
+    core_unix.command_unix
     core_kernel.caml_unix
     findlib.top
     omd

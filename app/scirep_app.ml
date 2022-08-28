@@ -351,4 +351,4 @@ let command = Command.group ~summary:"scirep" [
     "md2html", md2html_command ;
   ]
 
-let () = Command.run command
+let () = Command_unix.run command
